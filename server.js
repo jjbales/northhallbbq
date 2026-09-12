@@ -5,7 +5,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 
 const { db, getSetting, setSetting, allSettings } = require('./lib/db');
-const { availability, priceCart, releaseExpiredHolds, ordersCloseAt } = require('./lib/inventory');
+const { availability, priceCart, releaseExpiredHolds, ordersCloseAt, committedButts } = require('./lib/inventory');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -296,30 +296,85 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
 });
 
 app.post('/api/admin/cooks', requireAdmin, (req, res) => {
-  const { id, cook_date, butts_total, butt_cost_cents, other_cost_cents, status, note, orders_close_at, slots } = req.body || {};
-  let cookId = id;
-  if (id) {
-    db.prepare(
-      `UPDATE cook_dates SET cook_date=?, butts_total=?, butt_cost_cents=?, other_cost_cents=?, status=?, note=?, orders_close_at=? WHERE id=?`
-    ).run(cook_date, butts_total, Math.round(butt_cost_cents || 0), Math.round(other_cost_cents || 0), status || 'open', note || '', orders_close_at || null, id);
-  } else {
-    const info = db.prepare(
-      `INSERT INTO cook_dates (cook_date, butts_total, butt_cost_cents, other_cost_cents, status, note, orders_close_at)
-       VALUES (?,?,?,?,?,?,?)`
-    ).run(cook_date, butts_total, Math.round(butt_cost_cents || 0), Math.round(other_cost_cents || 0), status || 'open', note || '', orders_close_at || null);
-    cookId = info.lastInsertRowid;
+  try {
+    const { id, cook_date, butts_total, butt_cost_cents, other_cost_cents,
+            status, note, orders_close_at, slots } = req.body || {};
+
+    // --- validate, so a slip of the keyboard can't write a broken cook -------
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(cook_date || ''))) {
+      return res.status(400).json({ error: 'Pick a cook date.' });
+    }
+    const total = Number(butts_total);
+    if (!Number.isFinite(total) || total <= 0) {
+      return res.status(400).json({ error: 'How many butts? Must be more than zero.' });
+    }
+
+    // a different cook already owns this date?
+    const clash = db.prepare('SELECT id FROM cook_dates WHERE cook_date = ?').get(cook_date);
+    if (clash && (!id || Number(id) !== clash.id)) {
+      return res.status(409).json({
+        error: `There's already a cook on ${cook_date}. Edit that one instead of adding a second.`,
+      });
+    }
+
+    let cookId = id ? Number(id) : null;
+    if (cookId) {
+      // don't let the total drop below what people have already bought
+      const committed = committedButts(cookId);
+      if (total < committed - 1e-9) {
+        return res.status(409).json({
+          error: `You've already got ${committed} butt(s) spoken for on that date, so the total can't go below that. Cancel an order first if you need to shrink the cook.`,
+        });
+      }
+      db.prepare(
+        `UPDATE cook_dates SET cook_date=?, butts_total=?, butt_cost_cents=?, other_cost_cents=?,
+                status=?, note=?, orders_close_at=? WHERE id=?`
+      ).run(cook_date, total, Math.round(butt_cost_cents || 0), Math.round(other_cost_cents || 0),
+            status || 'open', note || '', orders_close_at || null, cookId);
+    } else {
+      const info = db.prepare(
+        `INSERT INTO cook_dates (cook_date, butts_total, butt_cost_cents, other_cost_cents, status, note, orders_close_at)
+         VALUES (?,?,?,?,?,?,?)`
+      ).run(cook_date, total, Math.round(butt_cost_cents || 0), Math.round(other_cost_cents || 0),
+            status || 'open', note || '', orders_close_at || null);
+      cookId = info.lastInsertRowid;
+    }
+
+    // --- slots: update in place, never orphan an order's pickup window ------
+    if (Array.isArray(slots)) {
+      const existing = db.prepare('SELECT * FROM pickup_slots WHERE cook_date_id = ?').all(cookId);
+      const wanted = slots.filter((x) => x && x.label);
+      const keep = new Set();
+
+      wanted.forEach((w, i) => {
+        const match = existing.find((e) => e.label === w.label);
+        if (match) {
+          keep.add(match.id);
+          db.prepare('UPDATE pickup_slots SET start_time=?, end_time=?, capacity=?, sort_order=? WHERE id=?')
+            .run(w.start_time, w.end_time, w.capacity || 6, i, match.id);
+        } else {
+          const info = db.prepare(
+            'INSERT INTO pickup_slots (cook_date_id, label, start_time, end_time, capacity, sort_order) VALUES (?,?,?,?,?,?)'
+          ).run(cookId, w.label, w.start_time, w.end_time, w.capacity || 6, i);
+          keep.add(Number(info.lastInsertRowid));
+        }
+      });
+
+      for (const e of existing) {
+        if (keep.has(e.id)) continue;
+        const used = db.prepare(
+          "SELECT COUNT(*) c FROM orders WHERE slot_id = ? AND status != 'cancelled'"
+        ).get(e.id).c;
+        if (used === 0) db.prepare('DELETE FROM pickup_slots WHERE id = ?').run(e.id);
+        // a window with orders in it stays put -- removing it would silently
+        // strip the pickup time off someone's confirmed order
+      }
+    }
+
+    res.json(availability(cookId));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
-  if (Array.isArray(slots)) {
-    db.prepare('DELETE FROM pickup_slots WHERE cook_date_id = ? AND id NOT IN (SELECT DISTINCT slot_id FROM orders WHERE slot_id IS NOT NULL)').run(cookId);
-    const ins = db.prepare(
-      'INSERT INTO pickup_slots (cook_date_id, label, start_time, end_time, capacity, sort_order) VALUES (?,?,?,?,?,?)'
-    );
-    const existing = db.prepare('SELECT label FROM pickup_slots WHERE cook_date_id = ?').all(cookId).map((s) => s.label);
-    slots.forEach((s, i) => {
-      if (!existing.includes(s.label)) ins.run(cookId, s.label, s.start_time, s.end_time, s.capacity || 6, i);
-    });
-  }
-  res.json(availability(cookId));
 });
 
 app.delete('/api/admin/cooks/:id', requireAdmin, (req, res) => {
