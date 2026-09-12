@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order Whole Boston Butts</title>
+<link rel="icon" href="brand/mark-green.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <div class="brandbar">
+      <div class="lockup">
+        <img src="brand/mark-white.svg" alt="" class="mark" width="84" height="84">
+        <div>
+        <h1 id="bizName">North Hall BBQ</h1>
+        <p id="tagline">Since 2014 — one butt or a thousand, same taste every time.</p>
+        </div>
+      </div>
+      <a href="admin.html">Owner login</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="card">
+    <h2>Pick a cook date</h2>
+    <p class="muted small" style="margin-top:-6px">Each cook is a fixed number of butts. When they're gone, they're gone.</p>
+    <div id="cooks" class="grid cooks" style="margin-top:14px">
+      <p class="muted">Loading cook dates…</p>
+    </div>
+  </section>
+
+  <section id="orderPanel" class="card hide">
+    <h2>What can I get you?</h2>
+    <div id="availLine" class="notice info"></div>
+    <div id="products"></div>
+
+    <div id="slotWrap" style="margin-top:22px">
+      <h3 style="font-size:17px">Pickup window</h3>
+      <div id="slots" class="slots"></div>
+    </div>
+
+    <div style="margin-top:22px">
+      <h3 style="font-size:17px">Who's it for?</h3>
+      <div class="row">
+        <div class="field"><label for="name">Name</label><input id="name" type="text" autocomplete="name"></div>
+        <div class="field"><label for="phone">Cell phone</label><input id="phone" type="tel" autocomplete="tel" placeholder="So I can text you when it's ready"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="email">Email (optional)</label><input id="email" type="email" autocomplete="email"></div>
+        <div class="field"><label for="notes">Anything I should know? (optional)</label><input id="notes" type="text" placeholder="Pulled, chopped, sauce on the side…"></div>
+      </div>
+
+      <fieldset class="prefbox">
+        <legend>How should I send your confirmation?</legend>
+        <div class="pills" id="prefPills">
+          <button type="button" class="pill" data-pref="text" aria-pressed="true">Text me</button>
+          <button type="button" class="pill" data-pref="email" aria-pressed="false">Email me</button>
+          <button type="button" class="pill" data-pref="both" aria-pressed="false">Both</button>
+        </div>
+        <label class="check">
+          <input type="checkbox" id="remind" checked>
+          <span>Remind me the day before pickup</span>
+        </label>
+      </fieldset>
+    </div>
+
+    <div class="total"><span>Total</span><span id="total">$0.00</span></div>
+    <div id="msg"></div>
+    <button id="submit" class="btn" style="margin-top:14px;width:100%" disabled>Add something to your order</button>
+    <p class="small muted" id="payNote" style="text-align:center;margin-top:10px"></p>
+  </section>
+
+  <section id="fundraiser" class="card band hide">
+    <h2 id="fundHead">Fundraisers</h2>
+    <p id="fundBlurb"></p>
+    <p id="fundCta" class="small"></p>
+    <div class="row" id="fundBtns"></div>
+  </section>
+
+  <section class="card">
+    <h2>Pickup</h2>
+    <p id="pickupAddr" class="muted"></p>
+    <p class="small muted" id="contact"></p>
+  </section>
+</main>
+
+<footer class="site"><div class="wrap"><span id="footName"></span> · jasonbales.com</div></footer>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const money = c => '$' + (c / 100).toFixed(2);
+let CFG = {}, PRODUCTS = [], COOKS = [], cookId = null, slotId = null, contactPref = 'text';
+const cart = {}; // slug -> qty
+
+async function api(url, opts) {
+  const r = await fetch(url, opts);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Something went wrong');
+  return d;
+}
+
+function fmtDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined,
+    { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+function countdownParts(closeAt) {
+  const ms = new Date(closeAt.replace(' ', 'T')) - new Date();
+  if (ms <= 0) return null;
+  const s = Math.floor(ms / 1000);
+  return { d: Math.floor(s / 86400), h: Math.floor(s / 3600) % 24,
+           m: Math.floor(s / 60) % 60, s: s % 60 };
+}
+
+function cookCard(c) {
+  const left = c.whole_butts_available;
+  const badge = c.sold_out ? '<span class="badge out">Sold out</span>'
+    : c.closed ? '<span class="badge grey">Orders closed</span>'
+    : left <= 2 ? `<span class="badge low">Only ${left} left</span>`
+    : '<span class="badge open">Taking orders</span>';
+  return `
+    <button class="cook ${c.sold_out || c.closed ? 'sold' : ''}" data-id="${c.cook_date_id}"
+            aria-pressed="${cookId === c.cook_date_id}" ${c.sold_out || c.closed ? 'disabled' : ''}>
+      <div class="date">${fmtDate(c.cook_date)}</div>
+      ${badge}
+      <div class="counter">
+        <span class="n">${left}</span>
+        <span class="of">of ${c.butts_total} butts left${c.lbs_available ? ` · ~${c.lbs_available} lbs` : ''}</span>
+      </div>
+      <div class="bar"><span style="width:${c.percent_sold}%"></span></div>
+      ${c.note ? `<p class="small muted" style="margin:10px 0 0">${c.note}</p>` : ''}
+      <div class="clock" data-close="${c.orders_close_at}"></div>
+    </button>`;
+}
+
+function tickClocks() {
+  document.querySelectorAll('.clock').forEach(el => {
+    const p = countdownParts(el.dataset.close);
+    if (!p) { el.innerHTML = '<div style="min-width:auto;border:0;background:none;padding:6px 0" class="small muted">Ordering closed</div>'; return; }
+    const cell = (v, l) => `<div><b>${String(v).padStart(2, '0')}</b><small>${l}</small></div>`;
+    el.innerHTML = (p.d ? cell(p.d, 'days') : '') + cell(p.h, 'hrs') + cell(p.m, 'min') + (p.d ? '' : cell(p.s, 'sec'));
+  });
+}
+
+function renderCooks() {
+  const box = $('#cooks');
+  const live = COOKS.filter(c => c.status !== 'done');
+  if (!live.length) {
+    box.innerHTML = '<p class="muted">No cooks on the calendar right now. Check back soon.</p>';
+    return;
+  }
+  box.innerHTML = live.map(cookCard).join('');
+  box.querySelectorAll('.cook').forEach(b =>
+    b.addEventListener('click', () => selectCook(Number(b.dataset.id))));
+  tickClocks();
+}
+
+function currentCook() { return COOKS.find(c => c.cook_date_id === cookId); }
+
+function renderProducts() {
+  $('#products').innerHTML = PRODUCTS.map(p => `
+    <div class="item">
+      <div>
+        <div><strong>${p.name}</strong></div>
+        <div class="small muted">${p.description || ''}</div>
+      </div>
+      <div class="row" style="align-items:center;gap:14px;flex-wrap:nowrap">
+        <div class="price">${money(p.price_cents)}${p.unit === 'lb' ? ' / lb' : ''}</div>
+        <div class="qty">
+          <button type="button" data-step="-1" data-slug="${p.slug}" aria-label="less">−</button>
+          <input type="number" min="0" step="${p.unit === 'lb' ? '0.5' : '1'}" value="0"
+                 data-slug="${p.slug}" inputmode="decimal">
+          <button type="button" data-step="1" data-slug="${p.slug}" aria-label="more">+</button>
+        </div>
+      </div>
+    </div>`).join('');
+
+  $('#products').querySelectorAll('button[data-step]').forEach(b =>
+    b.addEventListener('click', () => {
+      const inp = $(`input[data-slug="${b.dataset.slug}"]`);
+      const step = Number(inp.step) * Number(b.dataset.step);
+      inp.value = Math.max(0, Math.round((Number(inp.value) + step) * 100) / 100);
+      inp.dispatchEvent(new Event('input'));
+    }));
+  $('#email').addEventListener('input', recalc, { once: false });
+  $('#products').querySelectorAll('input[data-slug]').forEach(i =>
+    i.addEventListener('input', () => { cart[i.dataset.slug] = Number(i.value) || 0; recalc(); }));
+}
+
+function renderSlots() {
+  const c = currentCook();
+  const wrap = $('#slotWrap');
+  if (!c.slots.length) { wrap.classList.add('hide'); return; }
+  wrap.classList.remove('hide');
+  $('#slots').innerHTML = c.slots.map(s => `
+    <button type="button" class="slot" data-id="${s.id}" aria-pressed="${slotId === s.id}"
+            ${s.remaining <= 0 ? 'disabled' : ''}>
+      <div><strong>${s.label}</strong></div>
+      <div class="small muted">${s.remaining > 0 ? `${s.remaining} spot${s.remaining === 1 ? '' : 's'} open` : 'Full'}</div>
+    </button>`).join('');
+  $('#slots').querySelectorAll('.slot').forEach(b =>
+    b.addEventListener('click', () => { slotId = Number(b.dataset.id); renderSlots(); recalc(); }));
+}
+
+function recalc() {
+  const c = currentCook();
+  if (!c) return;
+  let total = 0, equiv = 0;
+  for (const p of PRODUCTS) {
+    const q = cart[p.slug] || 0;
+    total += p.price_cents * q;
+    equiv += p.butt_equiv * q;
+  }
+  $('#total').textContent = money(total);
+
+  const btn = $('#submit'), msg = $('#msg');
+  msg.innerHTML = '';
+  if (equiv <= 0) { btn.disabled = true; btn.textContent = 'Add something to your order'; return; }
+  if (equiv > c.butts_remaining + 1e-9) {
+    msg.innerHTML = `<div class="notice err">That's more than I have left for ${fmtDate(c.cook_date)} — ${c.whole_butts_available} whole butt(s) / about ${c.lbs_available} lbs still open.</div>`;
+    btn.disabled = true; btn.textContent = 'Too much for this date';
+    return;
+  }
+  if (c.slots.length && !slotId) { btn.disabled = true; btn.textContent = 'Pick a pickup window'; return; }
+  if ((contactPref === 'email' || contactPref === 'both') && !$('#email').value.trim()) {
+    btn.disabled = true; btn.textContent = 'Add your email address'; return;
+  }
+  btn.disabled = false;
+  btn.textContent = CFG.payment_mode === 'stripe' ? `Pay ${money(total)} and reserve`
+    : CFG.payment_mode === 'cheddarup' ? `Reserve and pay ${money(total)}`
+    : `Reserve ${money(total)} — pay at pickup`;
+}
+
+function selectCook(id) {
+  cookId = id; slotId = null;
+  const c = currentCook();
+  $('#orderPanel').classList.remove('hide');
+  $('#availLine').innerHTML =
+    `<strong>${fmtDate(c.cook_date)}</strong> — ${c.whole_butts_available} whole butt${c.whole_butts_available === 1 ? '' : 's'} left (about ${c.lbs_available} lbs of pulled pork).`;
+  renderProducts(); renderSlots(); recalc();
+  document.querySelectorAll('.cook').forEach(b =>
+    b.setAttribute('aria-pressed', Number(b.dataset.id) === id));
+  $('#orderPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function refresh() {
+  COOKS = await api('/api/cooks');
+  renderCooks();
+  if (cookId && currentCook()) {
+    const c = currentCook();
+    $('#availLine').innerHTML =
+      `<strong>${fmtDate(c.cook_date)}</strong> — ${c.whole_butts_available} whole butt${c.whole_butts_available === 1 ? '' : 's'} left (about ${c.lbs_available} lbs of pulled pork).`;
+    renderSlots(); recalc();
+  }
+}
+
+$('#prefPills').addEventListener('click', (e) => {
+  const b = e.target.closest('.pill'); if (!b) return;
+  contactPref = b.dataset.pref;
+  document.querySelectorAll('#prefPills .pill').forEach(x => x.setAttribute('aria-pressed', x === b));
+  // Email address stops being optional once they ask for email.
+  const needsEmail = contactPref === 'email' || contactPref === 'both';
+  $('label[for="email"]').textContent = needsEmail ? 'Email' : 'Email (optional)';
+  $('#email').required = needsEmail;
+  recalc();
+});
+
+$('#submit').addEventListener('click', async () => {
+  const btn = $('#submit'); btn.disabled = true; btn.textContent = 'Reserving…';
+  try {
+    const items = PRODUCTS.filter(p => (cart[p.slug] || 0) > 0)
+      .map(p => ({ slug: p.slug, qty: cart[p.slug] }));
+    const res = await api('/api/orders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cook_date_id: cookId, items, slot_id: slotId,
+        name: $('#name').value, phone: $('#phone').value,
+        email: $('#email').value, notes: $('#notes').value,
+        contact_pref: contactPref, reminder_optin: $('#remind').checked ? 1 : 0,
+      }),
+    });
+    if (res.checkout_url) { window.location = res.checkout_url; return; }
+    window.location = 'confirm.html?order=' + res.public_id;
+  } catch (e) {
+    $('#msg').innerHTML = `<div class="notice err">${e.message}</div>`;
+    await refresh();
+    btn.disabled = false; recalc();
+  }
+});
+
+(async function init() {
+  CFG = await api('/api/config');
+  PRODUCTS = await api('/api/products');
+  document.title = `Order from ${CFG.business_name}`;
+  $('#bizName').textContent = CFG.business_name;
+  $('#footName').textContent = CFG.business_name;
+  $('#tagline').textContent = CFG.tagline;
+  $('#pickupAddr').textContent = CFG.pickup_address;
+  $('#contact').textContent = [CFG.contact_phone, CFG.contact_email].filter(Boolean).join(' · ');
+  if (CFG.fundraiser_headline && CFG.fundraiser_blurb) {
+    $('#fundraiser').classList.remove('hide');
+    $('#fundHead').textContent = CFG.fundraiser_headline;
+    $('#fundBlurb').textContent = CFG.fundraiser_blurb;
+    $('#fundCta').textContent = CFG.fundraiser_cta || '';
+    $('#fundBtns').innerHTML =
+      (CFG.contact_phone ? `<a class="btn" href="tel:${CFG.contact_phone.replace(/[^0-9+]/g, '')}">Call ${CFG.contact_phone}</a>` : '') +
+      (CFG.contact_email ? `<a class="btn ghost" href="mailto:${CFG.contact_email}?subject=${encodeURIComponent('Fundraiser cook — ' + CFG.business_name)}">Email about a fundraiser</a>` : '');
+  }
+  $('#payNote').textContent =
+    CFG.payment_mode === 'stripe' ? 'Secure card checkout. Your butt is held while you pay.'
+    : CFG.payment_mode === 'cheddarup' ? 'Your butt is held the moment you reserve. Payment link comes next.'
+    : 'No payment up front — reserve now, settle up at pickup.';
+  await refresh();
+  setInterval(tickClocks, 1000);
+  setInterval(refresh, 15000);
+})();
+</script>
+</body>
+</html>

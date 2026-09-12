@@ -1,0 +1,18 @@
+# One-click deploy on Render. Point Render at this repo and it reads this file.
+services:
+  - type: web
+    name: north-hall-bbq
+    runtime: docker
+    plan: starter          # a paid plan -- the free tier has no persistent disk
+    healthCheckPath: /api/config
+    envVars:
+      - key: BASE_URL
+        sync: false        # set to https://bbq.jasonbales.com once DNS is pointed
+      - key: ADMIN_PASSWORD
+        sync: false        # set this in the Render dashboard, not in the repo
+      - key: DATA_DIR
+        value: /data
+    disks:
+      - name: bbq-data
+        mountPath: /data   # the SQLite file lives here and survives deploys
+        sizeGB: 1

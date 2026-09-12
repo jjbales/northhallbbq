@@ -1,0 +1,23 @@
+{
+  "name": "bbq-cook-dates",
+  "version": "1.0.0",
+  "description": "Cook-date ordering and live butt countdown",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "stripe": "^22.6.2"
+  }
+}

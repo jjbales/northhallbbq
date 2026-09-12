@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pit Boss — Admin</title>
+<link rel="icon" href="brand/mark-green.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:14px 0}
+  .kpi{background:var(--green-pale);border:1px solid #dde5df;border-radius:11px;padding:12px}
+  .kpi b{display:block;font-family:var(--font-head);font-size:22px;font-variant-numeric:tabular-nums}
+  .kpi small{color:var(--muted);font-size:12px}
+  .kpi.good b{color:var(--good)} .kpi.bad b{color:var(--bad)}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 0}
+  .tabs button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 16px;
+    cursor:pointer;font:inherit;font-size:14px}
+  .tabs button[aria-selected="true"]{background:var(--green);color:#fff;border-color:var(--green)}
+  .msg{border:1px solid var(--line);border-radius:11px;padding:14px;margin:10px 0;background:#fff}
+  .msgtext{background:var(--green-pale);border-radius:9px;padding:10px 12px;margin:10px 0;
+    font-size:14px;white-space:pre-wrap}
+  details{border:1px solid var(--line);border-radius:11px;padding:12px;margin:10px 0;background:#fff}
+  summary{cursor:pointer;font-weight:600}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><div class="brandbar">
+  <div class="lockup">
+    <img src="brand/mark-white.svg" alt="" class="mark" width="52" height="52">
+    <div><h1>Pit Boss</h1><p>Cook dates, orders and what you actually made.</p></div>
+  </div>
+  <div><a href="/">View the shop →</a> &nbsp; <a href="#" id="logout" class="hide">Sign out</a></div>
+</div></div></header>
+
+<main class="wrap">
+  <section id="loginCard" class="card hide" style="max-width:400px;margin:40px auto">
+    <h2>Sign in</h2>
+    <div class="field"><label for="pw">Password</label><input id="pw" type="password"></div>
+    <div id="loginMsg"></div>
+    <button class="btn" id="loginBtn" style="width:100%">Sign in</button>
+  </section>
+
+  <div id="app" class="hide">
+    <div class="tabs" id="tabs">
+      <button data-tab="cooks" aria-selected="true">Cooks &amp; orders</button>
+      <button data-tab="new" aria-selected="false">Schedule a cook</button>
+      <button data-tab="msgs" aria-selected="false">Confirmations &amp; reminders</button>
+      <button data-tab="menu" aria-selected="false">Menu &amp; prices</button>
+      <button data-tab="settings" aria-selected="false">Settings</button>
+    </div>
+
+    <section id="tab-cooks"><div id="cookList"></div></section>
+
+    <section id="tab-new" class="card hide">
+      <h2>Schedule a cook</h2>
+      <div class="row">
+        <div class="field"><label for="nDate">Cook / pickup date</label><input id="nDate" type="date"></div>
+        <div class="field"><label for="nButts">How many butts are you putting on?</label><input id="nButts" type="number" min="1" step="1" value="8"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="nCost">What you paid per shoulder ($)</label><input id="nCost" type="number" min="0" step="0.01" placeholder="e.g. 18.40"></div>
+        <div class="field"><label for="nOther">Other costs for the cook ($)</label><input id="nOther" type="number" min="0" step="0.01" placeholder="wood, rub, foil, pans"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="nClose">Orders close</label><input id="nClose" type="datetime-local"></div>
+        <div class="field"><label for="nNote">Note shown to customers (optional)</label><input id="nNote" type="text" placeholder="Pickup at the shop, cash or card"></div>
+      </div>
+      <h3 style="font-size:16px;margin-top:8px">Pickup windows</h3>
+      <div id="slotRows"></div>
+      <button class="btn ghost sm" id="addSlot" type="button">+ Add window</button>
+      <div id="newMsg"></div>
+      <button class="btn" id="saveCook" style="width:100%;margin-top:16px">Put it on the calendar</button>
+    </section>
+
+    <section id="tab-msgs" class="card hide">
+      <h2>Confirmations &amp; reminders</h2>
+      <p class="small muted" style="margin-top:-6px">Messages are written for you. Tap Text or Email to open your
+      phone's own app with it filled in, then mark it sent. Nothing goes out on its own.</p>
+      <h3 style="margin-top:18px">Confirmations to send</h3>
+      <div id="confirmList"></div>
+      <h3 style="margin-top:26px">Reminders due</h3>
+      <div id="remindList"></div>
+      <details style="margin-top:22px"><summary>Message wording</summary>
+        <div id="tplForm" style="margin-top:12px"></div>
+        <button class="btn sm" id="saveTpl">Save wording</button>
+        <span class="small muted" id="tplMsg" style="margin-left:8px"></span>
+        <p class="small muted" style="margin-top:10px">Placeholders: <code>{name}</code> <code>{date}</code>
+        <code>{slot}</code> <code>{items}</code> <code>{total}</code> <code>{order}</code></p>
+      </details>
+    </section>
+
+    <section id="tab-menu" class="card hide">
+      <h2>Menu &amp; prices</h2>
+      <p class="small muted" style="margin-top:-6px">“Butt equivalent” is how much of one whole shoulder a single unit uses up. That's what drives the countdown.</p>
+      <div id="menuRows"></div>
+    </section>
+
+    <section id="tab-settings" class="card hide">
+      <h2>Settings</h2>
+      <div id="settingsForm"></div>
+      <button class="btn" id="saveSettings" style="margin-top:10px">Save settings</button>
+      <span id="setMsg" class="small muted" style="margin-left:10px"></span>
+      <hr style="margin:24px 0;border:0;border-top:1px solid var(--line)">
+      <a class="btn ghost" href="/api/admin/export.csv">Download all orders (CSV)</a>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const money = c => '$' + (c / 100).toFixed(2);
+const cents = v => Math.round(Number(v || 0) * 100);
+let DATA = { cooks: [], settings: {} };
+
+async function api(url, opts) {
+  const r = await fetch(url, opts);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Request failed');
+  return d;
+}
+const post = (url, body) => api(url, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
+});
+
+/* ---------------------------------------------------------------- tabs */
+$('#tabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-tab]'); if (!b) return;
+  document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+  ['cooks', 'new', 'msgs', 'menu', 'settings'].forEach(t =>
+    $('#tab-' + t).classList.toggle('hide', t !== b.dataset.tab));
+});
+
+/* -------------------------------------------------------------- login */
+async function checkAuth() {
+  const me = await api('/api/admin/me');
+  $('#loginCard').classList.toggle('hide', me.signed_in);
+  $('#app').classList.toggle('hide', !me.signed_in);
+  $('#logout').classList.toggle('hide', !me.signed_in);
+  if (me.signed_in) load();
+}
+$('#loginBtn').addEventListener('click', async () => {
+  try { await post('/api/admin/login', { password: $('#pw').value }); checkAuth(); }
+  catch (e) { $('#loginMsg').innerHTML = `<div class="notice err">${e.message}</div>`; }
+});
+$('#pw').addEventListener('keydown', e => { if (e.key === 'Enter') $('#loginBtn').click(); });
+$('#logout').addEventListener('click', async e => {
+  e.preventDefault(); await post('/api/admin/logout'); location.reload();
+});
+
+/* --------------------------------------------------------- cook + orders */
+const STATUS = { pending: 'Holding', reserved: 'Reserved', paid: 'Paid', picked_up: 'Picked up' };
+
+function orderRow(o) {
+  const items = o.items.map(i => `${i.qty}${i.unit === 'lb' ? ' lb' : '×'} ${i.name}`).join(', ');
+  return `<tr>
+    <td><strong>${o.customer_name}</strong><br><span class="small muted">#${o.public_id} · ${o.phone}</span>
+      <br><span class="small muted">${PREF_LABEL[o.contact_pref] || 'prefers text'}${o.reminder_optin ? ' · reminder on' : ''}</span>
+      ${o.notes ? `<br><span class="small muted">“${o.notes}”</span>` : ''}</td>
+    <td>${items}<br><span class="small muted">${o.butt_equiv.toFixed(2)} butt eq.</span></td>
+    <td>${o.slot_label || '—'}</td>
+    <td>${money(o.total_cents)}</td>
+    <td><span class="badge ${o.status === 'paid' || o.status === 'picked_up' ? 'open' : o.status === 'pending' ? 'grey' : 'low'}">${STATUS[o.status] || o.status}</span></td>
+    <td style="white-space:nowrap">
+      ${o.status !== 'paid' && o.status !== 'picked_up' ? `<button class="btn sm ghost" data-order="${o.id}" data-status="paid">Mark paid</button> ` : ''}
+      ${o.status !== 'picked_up' ? `<button class="btn sm ghost" data-order="${o.id}" data-status="picked_up">Picked up</button> ` : ''}
+      <button class="btn sm ghost" data-order="${o.id}" data-status="cancelled">Cancel</button>
+    </td></tr>`;
+}
+
+function cookBlock(c) {
+  const a = c.availability, m = c.money;
+  return `<section class="card">
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div>
+        <h2 style="margin-bottom:2px">${c.cook_date}</h2>
+        <span class="badge ${a.sold_out ? 'out' : a.closed ? 'grey' : 'open'}">
+          ${a.sold_out ? 'Sold out' : a.closed ? 'Closed' : 'Taking orders'}</span>
+        <span class="small muted"> · ${a.butts_committed} of ${c.butts_total} butts spoken for</span>
+      </div>
+      <div class="row" style="gap:6px">
+        <button class="btn sm ghost" data-edit="${c.id}">Edit</button>
+        <button class="btn sm ghost" data-del="${c.id}">Delete</button>
+      </div>
+    </div>
+    <div class="bar" style="margin:12px 0"><span style="width:${a.percent_sold}%"></span></div>
+    <div class="kpis">
+      <div class="kpi"><b>${a.whole_butts_available}</b><small>butts left</small></div>
+      <div class="kpi"><b>${money(m.revenue_cents)}</b><small>booked</small></div>
+      <div class="kpi"><b>${money(m.collected_cents)}</b><small>collected</small></div>
+      <div class="kpi"><b>${money(m.total_cost_cents)}</b><small>your cost</small></div>
+      <div class="kpi ${m.profit_cents >= 0 ? 'good' : 'bad'}"><b>${money(m.profit_cents)}</b><small>profit (${m.margin_pct}%)</small></div>
+    </div>
+    ${m.outstanding_cents > 0 ? `<p class="small" style="color:var(--warn)">${money(m.outstanding_cents)} still to collect.</p>` : ''}
+    <p class="small muted">Pork ${money(c.butt_cost_cents)}/shoulder × ${c.butts_total} = ${money(m.pork_cost_cents)}${c.other_cost_cents ? ` + ${money(c.other_cost_cents)} other` : ''}. Break even at ${m.breakeven_butts} butt(s) sold.</p>
+    ${c.orders.length ? `<div style="overflow-x:auto"><table>
+      <tr><th>Customer</th><th>Order</th><th>Pickup</th><th>Total</th><th>Status</th><th></th></tr>
+      ${c.orders.map(orderRow).join('')}</table></div>`
+      : '<p class="muted small">No orders yet.</p>'}
+    <details>
+      <summary>Add an order by hand (phone / text customers)</summary>
+      <div class="row" style="margin-top:12px">
+        <div class="field"><label>Name</label><input type="text" data-m="name" data-cook="${c.id}"></div>
+        <div class="field"><label>Phone</label><input type="tel" data-m="phone" data-cook="${c.id}"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Whole butts</label><input type="number" min="0" step="1" value="1" data-m="butts" data-cook="${c.id}"></div>
+        <div class="field"><label>Pulled pork (lbs)</label><input type="number" min="0" step="0.5" value="0" data-m="lbs" data-cook="${c.id}"></div>
+        <div class="field"><label>Pickup window</label>
+          <select data-m="slot" data-cook="${c.id}">
+            <option value="">—</option>
+            ${a.slots.map(s => `<option value="${s.id}" ${s.remaining <= 0 ? 'disabled' : ''}>${s.label} (${s.remaining} open)</option>`).join('')}
+          </select></div>
+        <div class="field"><label>Status</label>
+          <select data-m="status" data-cook="${c.id}">
+            <option value="reserved">Reserved</option><option value="paid">Already paid</option>
+          </select></div>
+      </div>
+      <button class="btn sm" data-manual="${c.id}">Add order</button>
+    </details>
+  </section>`;
+}
+
+function render() {
+  $('#cookList').innerHTML = DATA.cooks.length
+    ? DATA.cooks.map(cookBlock).join('')
+    : '<div class="card"><p class="muted">No cooks scheduled yet. Head to “Schedule a cook”.</p></div>';
+
+  $('#cookList').querySelectorAll('button[data-order]').forEach(b =>
+    b.addEventListener('click', async () => {
+      if (b.dataset.status === 'cancelled' && !confirm('Cancel this order and put the butt back on the board?')) return;
+      await post(`/api/admin/orders/${b.dataset.order}/status`, { status: b.dataset.status });
+      load();
+    }));
+  $('#cookList').querySelectorAll('button[data-del]').forEach(b =>
+    b.addEventListener('click', async () => {
+      if (!confirm('Delete this cook date and all its orders?')) return;
+      await api('/api/admin/cooks/' + b.dataset.del, { method: 'DELETE' }); load();
+    }));
+  $('#cookList').querySelectorAll('button[data-edit]').forEach(b =>
+    b.addEventListener('click', () => editCook(Number(b.dataset.edit))));
+  $('#cookList').querySelectorAll('button[data-manual]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const id = b.dataset.manual;
+      const get = k => $(`[data-m="${k}"][data-cook="${id}"]`).value;
+      const items = [];
+      if (Number(get('butts')) > 0) items.push({ slug: 'whole-butt', qty: Number(get('butts')) });
+      if (Number(get('lbs')) > 0) items.push({ slug: 'pulled-lb', qty: Number(get('lbs')) });
+      try {
+        await post('/api/admin/orders', {
+          cook_date_id: Number(id), items, name: get('name') || 'Walk-up',
+          phone: get('phone'), slot_id: get('slot') || null, status: get('status'),
+        });
+        load();
+      } catch (e) { alert(e.message); }
+    }));
+}
+
+function editCook(id) {
+  const c = DATA.cooks.find(x => x.id === id);
+  $('#nDate').value = c.cook_date;
+  $('#nButts').value = c.butts_total;
+  $('#nCost').value = (c.butt_cost_cents / 100).toFixed(2);
+  $('#nOther').value = (c.other_cost_cents / 100).toFixed(2);
+  $('#nNote').value = c.note || '';
+  $('#nClose').value = c.orders_close_at ? c.orders_close_at.replace(' ', 'T').slice(0, 16) : '';
+  slotRows = c.availability.slots.map(s => ({ start: s.start_time, end: s.end_time, cap: s.capacity }));
+  editingId = id;
+  renderSlotRows();
+  $('#saveCook').textContent = 'Save changes';
+  document.querySelector('#tabs button[data-tab="new"]').click();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* -------------------------------------------------------- new cook form */
+let editingId = null;
+let slotRows = [{ start: '11:00', end: '12:00', cap: 6 }, { start: '12:00', end: '13:00', cap: 6 }];
+
+function to12(t) {
+  const [h, m] = t.split(':').map(Number);
+  const ap = h >= 12 ? 'PM' : 'AM', hh = h % 12 === 0 ? 12 : h % 12;
+  return `${hh}:${String(m).padStart(2, '0')} ${ap}`;
+}
+function renderSlotRows() {
+  $('#slotRows').innerHTML = slotRows.map((s, i) => `
+    <div class="row" style="align-items:flex-end">
+      <div class="field" style="flex:0 0 130px"><label>From</label><input type="time" value="${s.start}" data-s="${i}" data-f="start"></div>
+      <div class="field" style="flex:0 0 130px"><label>To</label><input type="time" value="${s.end}" data-s="${i}" data-f="end"></div>
+      <div class="field" style="flex:0 0 130px"><label>Orders in window</label><input type="number" min="1" value="${s.cap}" data-s="${i}" data-f="cap"></div>
+      <div class="field" style="flex:0 0 auto"><button class="btn ghost sm" type="button" data-rm="${i}">Remove</button></div>
+    </div>`).join('');
+  $('#slotRows').querySelectorAll('input[data-s]').forEach(inp =>
+    inp.addEventListener('input', () => {
+      slotRows[inp.dataset.s][inp.dataset.f] = inp.dataset.f === 'cap' ? Number(inp.value) : inp.value;
+    }));
+  $('#slotRows').querySelectorAll('button[data-rm]').forEach(b =>
+    b.addEventListener('click', () => { slotRows.splice(Number(b.dataset.rm), 1); renderSlotRows(); }));
+}
+$('#addSlot').addEventListener('click', () => {
+  const last = slotRows[slotRows.length - 1];
+  const nh = last ? String(Math.min(23, Number(last.end.split(':')[0]) + 1)).padStart(2, '0') : '12';
+  slotRows.push({ start: last ? last.end : '11:00', end: nh + ':00', cap: 6 });
+  renderSlotRows();
+});
+$('#saveCook').addEventListener('click', async () => {
+  try {
+    await post('/api/admin/cooks', {
+      id: editingId,
+      cook_date: $('#nDate').value,
+      butts_total: Number($('#nButts').value),
+      butt_cost_cents: cents($('#nCost').value),
+      other_cost_cents: cents($('#nOther').value),
+      note: $('#nNote').value,
+      orders_close_at: $('#nClose').value ? $('#nClose').value.replace('T', ' ') + ':00' : null,
+      slots: slotRows.map(s => ({ label: `${to12(s.start)} – ${to12(s.end)}`, start_time: s.start, end_time: s.end, capacity: s.cap })),
+    });
+    editingId = null;
+    $('#saveCook').textContent = 'Put it on the calendar';
+    $('#newMsg').innerHTML = '<div class="notice ok">Saved.</div>';
+    setTimeout(() => $('#newMsg').innerHTML = '', 2500);
+    await load();
+    document.querySelector('#tabs button[data-tab="cooks"]').click();
+  } catch (e) { $('#newMsg').innerHTML = `<div class="notice err">${e.message}</div>`; }
+});
+
+/* -------------------------------------------------- messages & reminders */
+const PREF_LABEL = { text: 'prefers text', email: 'prefers email', both: 'wants both' };
+
+function msgRow(m, kind) {
+  const tel = (m.phone || '').replace(/[^0-9+]/g, '');
+  const body = encodeURIComponent(m.message);
+  const wantsText = m.contact_pref === 'text' || m.contact_pref === 'both';
+  const wantsEmail = m.contact_pref === 'email' || m.contact_pref === 'both';
+  const subject = encodeURIComponent(
+    kind === 'reminder' ? `Reminder: BBQ pickup ${m.cook_date}` : `Order #${m.public_id} confirmed`);
+  return `<div class="msg">
+    <div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
+      <div>
+        <strong>${m.name}</strong>
+        <span class="small muted"> · #${m.public_id} · ${m.cook_date}${m.slot ? ', ' + m.slot : ''}</span>
+        <div class="small muted">${PREF_LABEL[m.contact_pref] || m.contact_pref}
+          ${m.phone ? ' · ' + m.phone : ''}${m.email ? ' · ' + m.email : ''}</div>
+      </div>
+      <button class="btn sm ghost" data-sent="${m.id}" data-kind="${kind}">Mark sent</button>
+    </div>
+    <p class="msgtext">${m.message.replace(/</g, '&lt;')}</p>
+    <div class="row" style="gap:8px">
+      ${wantsText && tel ? `<a class="btn sm" href="sms:${tel}&body=${body}">Text</a>` : ''}
+      ${wantsEmail && m.email ? `<a class="btn sm ghost" href="mailto:${m.email}?subject=${subject}&body=${body}">Email</a>` : ''}
+      <button class="btn sm ghost" data-copy="${encodeURIComponent(m.message)}">Copy</button>
+    </div>
+  </div>`;
+}
+
+async function renderMessages() {
+  const d = await api('/api/admin/messages');
+  $('#confirmList').innerHTML = d.confirmations.length
+    ? d.confirmations.map(m => msgRow(m, 'confirm')).join('')
+    : '<p class="muted small">Nothing waiting — everyone booked has been confirmed.</p>';
+  $('#remindList').innerHTML = d.reminders.length
+    ? d.reminders.map(m => msgRow(m, 'reminder')).join('')
+    : '<p class="muted small">No reminders due yet. They appear here based on your lead time.</p>';
+
+  document.querySelectorAll('#tab-msgs button[data-sent]').forEach(b =>
+    b.addEventListener('click', async () => {
+      await post(`/api/admin/messages/${b.dataset.sent}/sent`, { kind: b.dataset.kind });
+      renderMessages();
+    }));
+  document.querySelectorAll('#tab-msgs button[data-copy]').forEach(b =>
+    b.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(decodeURIComponent(b.dataset.copy));
+            b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1500); }
+      catch (e) { alert(decodeURIComponent(b.dataset.copy)); }
+    }));
+
+  const s = DATA.settings;
+  $('#tplForm').innerHTML = `
+    <div class="field"><label for="set_msg_confirm">Confirmation message</label>
+      <textarea id="set_msg_confirm" rows="3">${s.msg_confirm || ''}</textarea></div>
+    <div class="field"><label for="set_msg_reminder">Reminder message</label>
+      <textarea id="set_msg_reminder" rows="3">${s.msg_reminder || ''}</textarea></div>
+    <div class="field" style="max-width:240px"><label for="set_reminder_lead_days">Send reminders this many days ahead</label>
+      <input id="set_reminder_lead_days" type="number" min="0" max="14" value="${s.reminder_lead_days || 1}"></div>`;
+}
+$('#saveTpl').addEventListener('click', async () => {
+  DATA.settings = await post('/api/admin/settings', {
+    msg_confirm: $('#set_msg_confirm').value,
+    msg_reminder: $('#set_msg_reminder').value,
+    reminder_lead_days: $('#set_reminder_lead_days').value,
+  });
+  $('#tplMsg').textContent = 'Saved.';
+  setTimeout(() => $('#tplMsg').textContent = '', 2000);
+  renderMessages();
+});
+
+/* ------------------------------------------------------------- menu */
+async function renderMenu() {
+  const products = await api('/api/admin/products');
+  $('#menuRows').innerHTML = products.map(p => `
+    <div class="row" style="align-items:flex-end;border-bottom:1px solid var(--line);padding-bottom:6px">
+      <div class="field" style="flex:2 1 200px"><label>Item</label><input type="text" value="${p.name}" data-p="${p.id}" data-f="name"></div>
+      <div class="field" style="flex:0 0 120px"><label>Price ($)</label><input type="number" step="0.01" value="${(p.price_cents/100).toFixed(2)}" data-p="${p.id}" data-f="price"></div>
+      <div class="field" style="flex:0 0 100px"><label>Unit</label>
+        <select data-p="${p.id}" data-f="unit">
+          <option value="each" ${p.unit==='each'?'selected':''}>each</option>
+          <option value="lb" ${p.unit==='lb'?'selected':''}>per lb</option>
+        </select></div>
+      <div class="field" style="flex:0 0 120px"><label>Butt equivalent</label><input type="number" step="0.01" value="${p.butt_equiv}" data-p="${p.id}" data-f="equiv"></div>
+      <div class="field" style="flex:0 0 100px"><label>Active</label>
+        <select data-p="${p.id}" data-f="active"><option value="1" ${p.active?'selected':''}>Yes</option><option value="0" ${!p.active?'selected':''}>No</option></select></div>
+      <div class="field" style="flex:0 0 auto"><button class="btn sm" data-save="${p.id}">Save</button></div>
+    </div>`).join('') + `
+    <details style="margin-top:16px"><summary>Add a new item</summary>
+      <div class="row" style="margin-top:12px;align-items:flex-end">
+        <div class="field"><label>Name</label><input type="text" id="npName" placeholder="Sauce, pint"></div>
+        <div class="field" style="flex:0 0 120px"><label>Price ($)</label><input type="number" step="0.01" id="npPrice" value="8.00"></div>
+        <div class="field" style="flex:0 0 100px"><label>Unit</label><select id="npUnit"><option value="each">each</option><option value="lb">per lb</option></select></div>
+        <div class="field" style="flex:0 0 130px"><label>Butt equivalent</label><input type="number" step="0.01" id="npEquiv" value="0"></div>
+        <div class="field" style="flex:0 0 auto"><button class="btn sm" id="npAdd">Add</button></div>
+      </div>
+      <p class="small muted">Use 0 for anything that doesn't come off a shoulder (sauce, buns, sides).</p>
+    </details>`;
+
+  $('#menuRows').querySelectorAll('button[data-save]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const id = b.dataset.save, g = f => $(`[data-p="${id}"][data-f="${f}"]`).value;
+      await post('/api/admin/products', {
+        id: Number(id), name: g('name'), unit: g('unit'), price_cents: cents(g('price')),
+        butt_equiv: Number(g('equiv')), active: Number(g('active')), sort_order: 0,
+      });
+      b.textContent = 'Saved'; setTimeout(() => b.textContent = 'Save', 1500);
+    }));
+  const add = $('#npAdd');
+  if (add) add.addEventListener('click', async () => {
+    const name = $('#npName').value.trim(); if (!name) return;
+    await post('/api/admin/products', {
+      slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36).slice(-3),
+      name, unit: $('#npUnit').value, price_cents: cents($('#npPrice').value),
+      butt_equiv: Number($('#npEquiv').value), active: 1, sort_order: 9,
+    });
+    renderMenu();
+  });
+}
+
+/* --------------------------------------------------------- settings */
+const SETTING_FIELDS = [
+  ['business_name', 'Business name', 'text'],
+  ['tagline', 'Tagline', 'text'],
+  ['pickup_address', 'Pickup address', 'text'],
+  ['contact_phone', 'Your phone', 'tel'],
+  ['contact_email', 'Your email', 'email'],
+  ['payment_mode', 'How customers pay', 'select'],
+  ['cheddarup_url', 'Cheddar Up collection link', 'text'],
+  ['fundraiser_headline', 'Fundraiser section heading (blank hides it)', 'text'],
+  ['fundraiser_blurb', 'Fundraiser pitch', 'textarea'],
+  ['fundraiser_cta', 'Fundraiser call to action', 'text'],
+  ['yield_lbs_per_butt', 'Pounds of pulled pork per butt', 'number'],
+  ['hold_minutes', 'Minutes to hold an unpaid cart', 'number'],
+];
+function renderSettings() {
+  const s = DATA.settings;
+  $('#settingsForm').innerHTML = '<div class="row">' + SETTING_FIELDS.map(([k, label, type]) => `
+    <div class="field" style="${type === 'textarea' ? 'flex:1 1 100%' : ''}"><label for="set_${k}">${label}</label>
+    ${type === 'textarea'
+      ? `<textarea id="set_${k}" rows="4">${(s[k] ?? '')}</textarea>`
+      : type === 'select'
+      ? `<select id="set_${k}">
+          <option value="cheddarup" ${s[k]==='cheddarup'?'selected':''}>Cheddar Up (reserve, then pay by link)</option>
+          <option value="stripe" ${s[k]==='stripe'?'selected':''}>Stripe card checkout</option>
+          <option value="offline" ${s[k]==='offline'?'selected':''}>Pay at pickup</option>
+         </select>`
+      : `<input id="set_${k}" type="${type}" value="${(s[k] ?? '').toString().replace(/"/g, '&quot;')}">`}
+    </div>`).join('') + '</div>';
+}
+$('#saveSettings').addEventListener('click', async () => {
+  const body = {};
+  SETTING_FIELDS.forEach(([k]) => body[k] = $('#set_' + k).value);
+  DATA.settings = await post('/api/admin/settings', body);
+  $('#setMsg').textContent = 'Saved.';
+  setTimeout(() => $('#setMsg').textContent = '', 2000);
+});
+
+/* ------------------------------------------------------------- boot */
+async function load() {
+  DATA = await api('/api/admin/dashboard');
+  render(); renderSettings(); renderMenu(); renderMessages();
+}
+renderSlotRows();
+checkAuth();
+setInterval(() => { if (!$('#app').classList.contains('hide')) load(); }, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order confirmed</title>
+<link rel="icon" href="brand/mark-green.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="site"><div class="wrap"><h1 id="bizName">Order confirmed</h1>
+<p>Thanks — you're on the list.</p></div></header>
+<main class="wrap">
+  <section class="card" id="box"><p class="muted">Loading your order…</p></section>
+  <p style="text-align:center"><a href="/">← Back to cook dates</a></p>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const money = c => '$' + (c/100).toFixed(2);
+const params = new URLSearchParams(location.search);
+const pid = params.get('order');
+
+(async function(){
+  const cfg = await (await fetch('/api/config')).json();
+  $('#bizName').textContent = 'You’re booked';
+  if (params.get('session')) { try { await fetch(`/api/orders/${pid}/confirm`); } catch(e){} }
+  const r = await fetch('/api/orders/' + pid);
+  if (!r.ok) { $('#box').innerHTML = '<p class="notice err">We couldn’t find that order.</p>'; return; }
+  const o = await r.json();
+
+  const statusLine =
+    o.status === 'paid' || o.status === 'picked_up'
+      ? '<div class="notice ok"><strong>Paid.</strong> Nothing else to do — just come get it.</div>'
+      : cfg.payment_mode === 'cheddarup' && cfg.cheddarup_url
+        ? `<div class="notice info"><strong>Your butt is held.</strong> Finish up on Cheddar Up to lock it in.</div>
+           <a class="btn" style="width:100%;margin-bottom:8px" href="${cfg.cheddarup_url}" target="_blank" rel="noopener">Pay ${money(o.total_cents)} on Cheddar Up</a>
+           <p class="small muted">Put order <strong>#${o.public_id}</strong> in the notes so I can match it up.</p>`
+        : `<div class="notice info"><strong>Reserved.</strong> Pay ${money(o.total_cents)} at pickup — cash, card or Venmo.</div>`;
+
+  $('#box').innerHTML = `
+    <h2>Order #${o.public_id}</h2>
+    <p class="muted" style="margin-top:-6px">${o.name}</p>
+    ${statusLine}
+    <table style="margin-top:14px">
+      <tr><th>Item</th><th>Qty</th><th style="text-align:right">Price</th></tr>
+      ${o.items.map(i => `<tr><td>${i.name}</td><td>${i.qty}${i.unit==='lb'?' lb':''}</td>
+        <td style="text-align:right">${money(i.price_cents * i.qty)}</td></tr>`).join('')}
+      <tr><td colspan="2"><strong>Total</strong></td>
+          <td style="text-align:right"><strong>${money(o.total_cents)}</strong></td></tr>
+    </table>
+    <p style="margin-top:16px"><strong>Pickup:</strong> ${o.cook_date}${o.slot ? ', ' + o.slot : ''}<br>
+    <span class="muted">${cfg.pickup_address}</span></p>
+    <p class="small muted">Questions? ${[cfg.contact_phone, cfg.contact_email].filter(Boolean).join(' · ')}</p>`;
+})();
+</script>
+</body>
+</html>
