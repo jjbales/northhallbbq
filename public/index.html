@@ -12,13 +12,69 @@
 </head>
 <body>
 <header class="site">
+  <!-- Illustrated scene: pit, smoke and embers. Drawn, not photographed. -->
+  <div class="heroart" aria-hidden="true">
+    <svg viewBox="0 0 1440 520" preserveAspectRatio="xMidYMax slice">
+      <defs>
+        <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="26"/>
+        </filter>
+        <filter id="softer" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="46"/>
+        </filter>
+        <linearGradient id="smoke" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity=".34"/>
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="heat" cx="50%" cy="100%" r="70%">
+          <stop offset="0%" stop-color="#f7c14a" stop-opacity=".55"/>
+          <stop offset="55%" stop-color="#c2481f" stop-opacity=".22"/>
+          <stop offset="100%" stop-color="#c2481f" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <!-- smoke plumes -->
+      <g filter="url(#softer)" opacity="1">
+        <path d="M1060 460 C1035 350 1105 300 1080 215 C1062 155 1108 120 1096 60
+                 C1150 130 1108 180 1132 245 C1154 305 1112 360 1140 460 Z" fill="url(#smoke)"/>
+        <path d="M1215 460 C1198 372 1250 330 1232 268 C1219 224 1252 196 1244 152
+                 C1284 208 1253 244 1271 292 C1289 336 1258 376 1279 460 Z" fill="url(#smoke)"/>
+        <path d="M905 460 C890 390 932 358 918 306 C907 268 934 246 928 210
+                 C961 256 936 286 950 326 C965 362 939 396 956 460 Z" fill="url(#smoke)"/>
+      </g>
+
+      <!-- heat haze over the firebox -->
+      <ellipse cx="1120" cy="470" rx="230" ry="120" fill="url(#heat)"/>
+
+      <!-- the pit, in silhouette -->
+      <g fill="#0b140e" opacity=".92" transform="translate(118,22)">
+        <rect x="1042" y="300" width="26" height="72" rx="5"/>
+        <rect x="900" y="360" width="230" height="86" rx="40"/>
+        <rect x="838" y="382" width="70" height="64" rx="12"/>
+        <path d="M934 446 l-14 44 M1100 446 l14 44" stroke="#0b140e" stroke-width="15" stroke-linecap="round"/>
+        <rect x="856" y="440" width="292" height="15" rx="7"/>
+      </g>
+      <!-- ember mouth -->
+      <rect x="970" y="426" width="42" height="22" rx="6" fill="#e8822a" opacity=".9"/>
+      <rect x="974" y="430" width="34" height="14" rx="4" fill="#f7c14a" opacity=".95"/>
+
+      <!-- sparks -->
+      <g fill="#f7c14a">
+        <circle cx="880" cy="330" r="3" opacity=".85"/><circle cx="912" cy="286" r="2.2" opacity=".7"/>
+        <circle cx="856" cy="268" r="2.6" opacity=".6"/><circle cx="940" cy="228" r="2" opacity=".5"/>
+        <circle cx="820" cy="330" r="2.2" opacity=".55"/><circle cx="964" cy="300" r="2.6" opacity=".65"/>
+        <circle cx="800" cy="250" r="1.8" opacity=".4"/><circle cx="988" cy="196" r="2" opacity=".45"/>
+      </g>
+    </svg>
+  </div>
+
   <div class="wrap">
     <div class="brandbar">
       <div class="lockup">
-        <img src="brand/mark-white.svg" alt="" class="mark" width="84" height="84">
+        <img src="brand/mark-white.svg" alt="" class="mark" width="96" height="96">
         <div>
-        <h1 id="bizName">North Hall BBQ</h1>
-        <p id="tagline">Since 2014 — one butt or a thousand, same taste every time.</p>
+        <h1 id="bizName" data-text="North Hall BBQ">North Hall BBQ</h1>
+        <p class="ribbon"><span id="tagline">Since 2014 — one butt or a thousand, same flavor every time.</span></p>
         </div>
       </div>
       <a href="admin.html">Owner login</a>
@@ -27,7 +83,7 @@
       <div><b>2014</b>Cooking since</div>
       <div><b>1&nbsp;&ndash;&nbsp;1000</b>Butts per cook</div>
       <div><b>LOCAL</b>Gainesville pickup</div>
-      <div><b>FUNDRAISERS</b>Churches &middot; schools &middot; teams</div>
+      <div><b>FUNDRAISERS</b>Churches &middot; schools &middot; teams &middot; non-profits</div>
     </div>
   </div>
 </header>
@@ -90,7 +146,7 @@
   </section>
 
   <blockquote class="quote">
-    One butt or a thousand &mdash; same pit, same rub, same taste every time.
+    One butt or a thousand &mdash; same pits, same rub, same flavor every time.
     <cite>Cooking for North Hall since 2014.</cite>
   </blockquote>
 
@@ -334,6 +390,7 @@ $('#submit').addEventListener('click', async () => {
   PRODUCTS = await api('/api/products');
   document.title = `Order from ${CFG.business_name}`;
   $('#bizName').textContent = CFG.business_name;
+  $('#bizName').setAttribute('data-text', CFG.business_name);
   $('#footName').textContent = CFG.business_name;
   $('#tagline').textContent = CFG.tagline;
   if (CFG.contact_phone) {
