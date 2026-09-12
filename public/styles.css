@@ -153,3 +153,152 @@ footer.site{padding:40px 0;color:var(--muted);font-size:13px;text-align:center}
 .lockup{display:flex;align-items:center;gap:16px}
 .lockup .mark{flex:0 0 auto;display:block}
 @media (max-width:560px){ .lockup .mark{width:46px;height:46px} }
+
+/* ============================================================ hero & flare */
+/* Depth without images: layered gradients only, so it stays fast on a phone. */
+header.site{position:relative;overflow:hidden;padding:44px 0 38px;
+  background:var(--green-d);
+  background-image:
+    radial-gradient(760px 300px at 92% -40%, rgba(194,72,31,.38), transparent 60%),
+    radial-gradient(700px 380px at 6% 130%, rgba(63,107,74,.45), transparent 62%),
+    linear-gradient(160deg, #2f5638 0%, #22351f 55%, #16241a 100%);
+  border-bottom:0}
+/* diagonal light streaks, like a stadium banner */
+header.site::before{content:"";position:absolute;inset:-20% -10%;pointer-events:none;
+  background:repeating-linear-gradient(115deg,
+    rgba(255,255,255,.055) 0px, rgba(255,255,255,.055) 2px,
+    transparent 2px, transparent 34px);
+  transform:rotate(-2deg)}
+header.site::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;
+  background:linear-gradient(90deg, var(--ember-hot), var(--ember-mid), var(--green-l))}
+header.site .wrap{position:relative;z-index:1}
+
+:root{--ember-hot:#f7c14a; --ember-mid:#e8822a; --ember-deep:#c2481f}
+
+header.site h1{font-size:clamp(32px,5.4vw,56px);font-weight:700;letter-spacing:.035em;
+  line-height:.98;margin-bottom:8px;color:#fff;
+  text-shadow:0 2px 0 rgba(0,0,0,.30), 0 10px 30px rgba(0,0,0,.25)}
+header.site p{color:#cfe0d4;font-size:clamp(14px,1.6vw,17px);letter-spacing:.01em}
+.lockup .mark{filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
+
+/* trust strip -- the flyer's icon row, in your colours */
+.trust{position:relative;z-index:1;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;
+  margin:26px auto 0;padding-top:20px;border-top:1px solid rgba(255,255,255,.14)}
+.trust div{text-align:center;color:#d7e3da;font-size:12.5px;line-height:1.35;
+  font-family:var(--font-head);text-transform:uppercase;letter-spacing:.07em}
+.trust b{display:block;font-size:20px;color:#fff;letter-spacing:.02em;margin-bottom:3px;
+  background:linear-gradient(180deg,var(--ember-hot),var(--ember-deep));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+@media (max-width:560px){ .trust div{font-size:11px} .trust b{font-size:17px} }
+
+/* headline rules, like the flyer's bracketed callouts */
+.card > h2:first-child{position:relative;padding-bottom:10px;margin-bottom:14px}
+.card > h2:first-child::after{content:"";position:absolute;left:0;bottom:0;
+  width:52px;height:4px;border-radius:2px;
+  background:linear-gradient(90deg,var(--ember-mid),var(--ember-deep))}
+.card.band > h2:first-child::after{background:linear-gradient(90deg,var(--ember-hot),var(--ember-mid))}
+
+/* cook cards: more presence, ember on the live one */
+.cook{padding:20px 20px 18px;border-width:1.5px;position:relative;overflow:hidden}
+.cook::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;
+  background:linear-gradient(90deg,var(--green-l),var(--green));opacity:.85}
+.cook[aria-pressed="true"]::before{background:linear-gradient(90deg,var(--ember-hot),var(--ember-deep));opacity:1}
+.cook:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(17,19,17,.12)}
+
+/* the number is the hero of the card -- metallic, like the flyer's dates */
+.counter{margin:14px 0 8px;align-items:baseline}
+.counter .n{font-size:clamp(44px,7vw,60px);line-height:.9;letter-spacing:-.02em;
+  background:linear-gradient(170deg,var(--ember-hot) 0%,var(--ember-mid) 45%,var(--ember-deep) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.10))}
+.cook.sold .counter .n{background:linear-gradient(170deg,#b9bdb9,#7e847e);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.counter .of{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.06em;
+  font-size:12.5px;color:var(--ink-2)}
+.bar{height:10px;box-shadow:inset 0 1px 2px rgba(0,0,0,.10)}
+.bar span{background:linear-gradient(90deg,var(--ember-mid),var(--ember-deep))}
+
+/* countdown clock: darker, more like a scoreboard */
+.clock div{background:var(--green-d);border-color:var(--green-d);color:#eaf0ec;min-width:62px}
+.clock b{color:#fff;font-size:21px}
+.clock small{color:#9fb6a7}
+
+/* fundraiser band gets the same streaks */
+.card.band{position:relative;overflow:hidden}
+.card.band::before{content:"";position:absolute;inset:-30% -10%;pointer-events:none;
+  background:repeating-linear-gradient(115deg,
+    rgba(255,255,255,.05) 0px, rgba(255,255,255,.05) 2px,
+    transparent 2px, transparent 30px)}
+.card.band > *{position:relative;z-index:1}
+
+/* primary action button: warmer, so it reads as "do this" */
+#submit{background:linear-gradient(180deg,var(--ember-mid),var(--ember-deep));
+  box-shadow:0 4px 14px rgba(194,72,31,.30);font-size:16px;padding:16px 24px}
+#submit:hover{background:linear-gradient(180deg,#ef8b34,#ad3f1b)}
+#submit:disabled{background:var(--grey);box-shadow:none}
+
+footer.site{padding:34px 0 44px;border-top:1px solid var(--line);margin-top:30px}
+
+
+/* ------------------------------------------------- painted accents */
+/* A swipe instead of a bar -- the brush-stroke idea from the flyers,
+   done with clip-path so it stays vector-sharp at any size. */
+.card > h2:first-child::after{
+  width:74px;height:9px;border-radius:0;
+  clip-path:polygon(0 42%, 9% 8%, 26% 30%, 48% 4%, 71% 26%, 88% 6%, 100% 36%,
+                    97% 82%, 78% 62%, 56% 94%, 34% 66%, 14% 96%, 2% 74%);
+  background:linear-gradient(90deg,var(--ember-mid),var(--ember-deep))}
+.card.band > h2:first-child::after{
+  background:linear-gradient(90deg,var(--ember-hot),var(--ember-mid))}
+
+/* quote band -- the callout treatment, used for the thing worth repeating */
+.quote{position:relative;margin:22px 0;padding:26px 24px 26px 62px;border-radius:var(--r);
+  background:var(--green-pale);border:1px solid #d7e2da;
+  font-family:var(--font-head);font-weight:500;font-size:clamp(17px,2.3vw,23px);
+  line-height:1.3;color:var(--green-d);text-transform:uppercase;letter-spacing:.015em}
+.quote::before{content:"\201C";position:absolute;left:16px;top:2px;
+  font-family:ui-serif,Georgia,serif;font-size:74px;line-height:1;
+  color:var(--ember-deep);opacity:.55}
+.quote cite{display:block;margin-top:10px;font-family:var(--font-body);font-style:normal;
+  text-transform:none;letter-spacing:0;font-size:14px;font-weight:400;color:var(--muted)}
+
+/* star rule, the divider from the player graphic */
+.stars{display:flex;align-items:center;gap:12px;justify-content:center;margin:26px 0 6px;
+  color:var(--grey);font-size:12px;letter-spacing:.3em}
+.stars::before,.stars::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* ------------------------------------------- tabbed panel + icon rows */
+/* The notched header-tab panel from the tryout flyer. */
+.panel{border:1.5px solid var(--line);border-radius:var(--r);background:var(--card);
+  margin:18px 0;overflow:hidden;box-shadow:var(--shadow)}
+.panel > .tab{background:var(--green);color:#fff;font-family:var(--font-head);
+  font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;
+  padding:9px 20px;display:block;
+  clip-path:polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%)}
+.panel .body{padding:18px 20px 20px}
+
+.iconrow{display:flex;align-items:flex-start;gap:14px;padding:12px 0;
+  border-bottom:1px solid var(--line)}
+.iconrow:last-child{border-bottom:0}
+.iconrow svg{flex:0 0 auto;width:22px;height:22px;margin-top:1px;color:var(--green)}
+.iconrow .t{font-weight:600;color:var(--ink)}
+.iconrow .s{font-size:13.5px;color:var(--muted)}
+.iconrow a{color:var(--green-d);text-decoration:none;font-weight:600}
+.iconrow a:hover{text-decoration:underline}
+
+/* --------------------------------------------------- small screens */
+@media (max-width:620px){
+  header.site{padding:26px 0 24px}
+  .brandbar{position:relative;align-items:flex-start}
+  /* keep the owner link out of the flow so it can't push the lockup around */
+  .brandbar > a{position:absolute;top:2px;right:0;font-size:12px;opacity:.85}
+  .lockup{align-items:center;gap:12px;padding-right:78px}
+  header.site h1{font-size:26px;letter-spacing:.02em}
+  header.site p{font-size:13.5px;margin-top:2px}
+  .trust{margin-top:18px;padding-top:14px;gap:14px 8px}
+  .quote{padding:20px 18px 20px 48px;font-size:16px}
+  .quote::before{font-size:56px;left:12px}
+  .counter .n{font-size:42px}
+  .panel .body{padding:14px 16px 16px}
+}
