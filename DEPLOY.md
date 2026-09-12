@@ -19,16 +19,44 @@ change — not a hypothetical, it's the normal behaviour of free tiers.
 So the requirement is: **a host with a persistent disk**, mounted at the path
 in `DATA_DIR`. `render.yaml` in this repo already asks for one.
 
-## Options, cheapest first
+## Where to run it — the actual recommendation
 
-| Host | Cost | Persistent disk | Notes |
-|---|---|---|---|
-| **Render** | ~$7/mo | Yes, on paid plans | `render.yaml` is here, so it's close to one click. Free tier has no disk — don't use it for this. |
-| **Fly.io** | ~$3-5/mo | Yes, volumes | Cheapest that's still easy. Uses the `Dockerfile`. |
-| **Railway** | usage-based | Yes, volumes | Simple, but the bill moves around. |
-| **A $5 VPS** | $5/mo | It's a real disk | Most control, most babysitting. You patch it. |
+**Render.** Not because it's cheaper (it isn't), but because of what it costs
+you in attention.
 
-All four take the `Dockerfile` in this repo.
+Real prices, from their own pricing pages:
+
+| | Render | Fly.io |
+|---|---|---|
+| Smallest paid instance | $7.00/mo (512MB) | $3.19/mo (512MB shared-cpu-1x) |
+| 1GB persistent disk | $0.25/mo | $0.15/mo |
+| **Monthly total** | **~$7.25** | **~$3.35** |
+| How you deploy | Connect the GitHub repo, it reads `render.yaml`, done | `flyctl` from your terminal, or wire up a GitHub Action |
+| Volumes while idle | Always on | Charged even when the machine is stopped |
+
+Fly is roughly half the price. That's about **$47 a year** — one butt. Against
+$50-a-butt unit economics, the cheaper host saves you less than a single
+order, and costs you an evening the first time `flyctl` does something
+surprising on a Friday night before a cook.
+
+Render also already has `render.yaml` in this repo, so the setup is: connect
+the repo, set two environment variables, deploy.
+
+**Pick Fly instead if** you're comfortable in a terminal and would rather pay
+$3 than $7 on principle. It's a good platform — this is a convenience call,
+not a quality one.
+
+**Whichever you pick, do not use a free tier.** Render's free plan has no
+persistent disk: the site will deploy, take orders all week, then lose every
+one of them the next time it restarts. That's the single most expensive
+mistake available here.
+
+### One thing to expect on either
+
+A service with an attached disk can't do a zero-downtime rolling deploy — the
+disk belongs to one machine at a time, so pushing an update takes the site
+down for a few seconds. Irrelevant for a BBQ order page. Just don't deploy
+while someone's mid-checkout on a Friday night.
 
 ## What about Cloudflare?
 
