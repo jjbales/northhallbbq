@@ -30,6 +30,30 @@ in `DATA_DIR`. `render.yaml` in this repo already asks for one.
 
 All four take the `Dockerfile` in this repo.
 
+## What about Cloudflare?
+
+Split the question in two, because Cloudflare gives a different answer to each.
+
+**As the domain registrar, DNS and HTTPS in front of the site — yes, use it.**
+Cloudflare Registrar sells .com at wholesale (around $10-11/yr) with no
+first-year bait and no renewal markup, DNS is free, and TLS certificates are
+automatic. This is the best part of Cloudflare for you and it works with any
+host below.
+
+**As the thing that runs the app — not without rework.** Three products, three
+different problems:
+
+| Cloudflare product | Runs this app? | Why |
+|---|---|---|
+| **Pages** | No | Static files only. Same limitation as GitHub Pages. |
+| **Workers** | Only after a rewrite | Workers isn't Node. `better-sqlite3` is a native module and can't load there, and Express needs a shim. You'd swap SQLite for **D1** and Express for Hono. Doable, but it's a real port of the data layer, not a config change. |
+| **Containers** | Runs the Dockerfile, but loses your orders | Cloudflare's own docs: "All disk is ephemeral. When a Container instance goes to sleep, the next time it is started, it will have a fresh disk." Every sleep wipes `bbq.db`. Needs Workers Paid ($5/mo) on top. |
+
+So the sensible split is **Cloudflare for the domain and DNS, Fly or Render for
+the app.** If you'd rather have everything under one Cloudflare bill later,
+the port to Workers + D1 is the way — worth doing once orders are steady, not
+before the first cook.
+
 ## Domain
 
 You already own **jasonbales.com**, so the free option is a subdomain:
@@ -38,10 +62,9 @@ You already own **jasonbales.com**, so the free option is a subdomain:
 
 That costs nothing, works today, and looks fine on a flyer.
 
-A separate name like `northhallbbq.com` runs about $10-12/year. Buy it from a
-registrar that sells at cost and doesn't play renewal games — Cloudflare
-Registrar is the usual recommendation; Porkbun and Namecheap are fine too.
-Avoid the $0.99 first-year offers, the renewal is where they get you.
+A separate name like `northhallbbq.com` runs about $10-12/year at Cloudflare
+Registrar, which sells at cost. Porkbun and Namecheap are fine alternatives.
+Avoid the $0.99 first-year offers — the renewal is where they get you.
 
 Either way: put the domain's DNS on Cloudflare (free), point the record at
 your host, and let Cloudflare handle HTTPS.
