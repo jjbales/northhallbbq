@@ -8,7 +8,7 @@ not starting from an empty folder. Two steps.
 Go to <https://github.com/new>
 
 - **Owner:** jjbales
-- **Repository name:** `north-hall-bbq`
+- **Repository name:** `northhallbbq`
 - **Private** (recommended — nothing secret is in the code, but there's no
   reason for your customer list logic to be public either)
 - **Do NOT** tick "Add a README", "Add .gitignore" or "Choose a license".
@@ -17,11 +17,11 @@ Go to <https://github.com/new>
 
 ## 2. Push from your Mac
 
-Unzip this project somewhere sensible (`~/Projects/north-hall-bbq` is fine),
+Unzip this project somewhere sensible (`~/Projects/northhallbbq` is fine),
 open Terminal in that folder, and run:
 
 ```bash
-git remote add origin https://github.com/jjbales/north-hall-bbq.git
+git remote add origin https://github.com/jjbales/northhallbbq.git
 git branch -M main
 git push -u origin main
 ```

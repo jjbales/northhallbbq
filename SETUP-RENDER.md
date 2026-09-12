@@ -14,7 +14,7 @@ See `PUSH.md`. Render deploys from GitHub, so the code has to be there first.
 ## 2. Create the service
 
 1. <https://dashboard.render.com> → **New** → **Blueprint**
-2. Connect the `jjbales/north-hall-bbq` repo
+2. Connect the `jjbales/northhallbbq` repo
 3. Render reads `render.yaml` and proposes: a Docker web service on the
    **Starter** plan with a **1 GB disk mounted at `/data`**. That disk is the
    whole ballgame — it's where orders live. Confirm it's there before you
