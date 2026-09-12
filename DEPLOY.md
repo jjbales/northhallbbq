@@ -84,9 +84,9 @@ before the first cook.
 
 ## Domain
 
-You already own **jasonbales.com**, so the free option is a subdomain:
+The site runs on **northhallbbq.com**, registered at Cloudflare:
 
-    bbq.jasonbales.com   ->  CNAME  ->  your-app.onrender.com
+    northhallbbq.com   ->  CNAME  ->  north-hall-bbq.onrender.com
 
 That costs nothing, works today, and looks fine on a flyer.
 

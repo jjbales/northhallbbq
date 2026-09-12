@@ -61,8 +61,8 @@ Back in Render, click **Verify**. Certificate issues in a few minutes.
 
 ## 4. Optional: keep the old address working
 
-If you've handed anyone `bbq.jasonbales.com`, add the same CNAME on
-jasonbales.com and add that hostname in Render's Custom Domains too. Costs
+If you've handed anyone another address, add the same CNAME on that domain
+and add the hostname in Render's Custom Domains too. Costs
 nothing and means no one hits a dead link.
 
 ## 5. Before you take money

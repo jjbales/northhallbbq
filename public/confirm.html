@@ -52,7 +52,7 @@ const pid = params.get('order');
           <td style="text-align:right"><strong>${money(o.total_cents)}</strong></td></tr>
     </table>
     <p style="margin-top:16px"><strong>Pickup:</strong> ${o.cook_date}${o.slot ? ', ' + o.slot : ''}<br>
-    <span class="muted">${cfg.pickup_address}</span></p>
+    <span class="muted">The pickup address is in the confirmation I'll send you.</span></p>
     <p class="small muted">Questions? ${[cfg.contact_phone, cfg.contact_email].filter(Boolean).join(' · ')}</p>`;
 })();
 </script>

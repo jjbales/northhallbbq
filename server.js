@@ -40,7 +40,6 @@ app.get('/api/config', (req, res) => {
   res.json({
     business_name: s.business_name,
     tagline: s.tagline,
-    pickup_address: s.pickup_address,
     contact_phone: s.contact_phone,
     contact_email: s.contact_email,
     payment_mode: paymentMode(),
@@ -417,7 +416,8 @@ function renderMsg(tpl, o) {
     .replace(/{slot}/g, o.slot_label || 'pickup time TBD')
     .replace(/{items}/g, items)
     .replace(/{total}/g, '$' + money(o.total_cents))
-    .replace(/{order}/g, o.public_id);
+    .replace(/{order}/g, o.public_id)
+    .replace(/{address}/g, getSetting('pickup_address') || '');
 }
 
 // Who needs a confirmation or a reminder, with the message already written.

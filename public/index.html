@@ -101,8 +101,8 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-        <div><div class="t" id="pickupAddr">&nbsp;</div>
-             <div class="s">Pull up out front &mdash; I'll bring it to you.</div></div>
+        <div><div class="t">Pickup in Gainesville, GA</div>
+             <div class="s">The exact address comes with your confirmation, by text or email.</div></div>
       </div>
       <div class="iconrow" id="phoneRow" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -124,7 +124,7 @@
   <div class="stars">&#9733; &nbsp; &#9733; &nbsp; &#9733;</div>
 </main>
 
-<footer class="site"><div class="wrap"><span id="footName"></span> · jasonbales.com</div></footer>
+<footer class="site"><div class="wrap"><span id="footName"></span> · northhallbbq.com</div></footer>
 
 <script>
 const $ = (s, r = document) => r.querySelector(s);
@@ -336,7 +336,6 @@ $('#submit').addEventListener('click', async () => {
   $('#bizName').textContent = CFG.business_name;
   $('#footName').textContent = CFG.business_name;
   $('#tagline').textContent = CFG.tagline;
-  $('#pickupAddr').textContent = CFG.pickup_address;
   if (CFG.contact_phone) {
     $('#phoneRow').hidden = false;
     $('#phoneLink').textContent = CFG.contact_phone;

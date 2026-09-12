@@ -115,13 +115,13 @@ editable under "Message wording".
 - **Settings** — business name, pickup address, payment mode, yield, hold time.
   CSV export of every order lives at the bottom.
 
-## Putting it on jasonbales.com
+## Putting it on northhallbbq.com
 
 It's a normal Node app, so anywhere that runs Node works. Cheapest paths:
 
 1. **Mac mini at home** — run it with `pm2` or a launchd plist so it restarts
    on reboot, then point a Cloudflare Tunnel at it. Free, no ports opened on
-   your router, and `bbq.jasonbales.com` resolves straight to the mini.
+   your router, and `northhallbbq.com` resolves straight to the mini.
 2. **A $5/mo VPS or Render/Railway/Fly** — push the folder, set the env vars,
    point a CNAME at it. No hardware to babysit.
 
