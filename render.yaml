@@ -14,7 +14,7 @@ services:
         value: /data
       - key: ADMIN_PASSWORD
         sync: false               # set in the dashboard -- never in the repo
-    disks:
-      - name: bbq-data
-        mountPath: /data          # bbq.db lives here and survives deploys
-        sizeGB: 1
+    disk:
+      name: bbq-data
+      mountPath: /data          # bbq.db lives here and survives deploys
+      sizeGB: 1
