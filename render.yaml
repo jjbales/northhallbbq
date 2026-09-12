@@ -1,18 +1,20 @@
-# One-click deploy on Render. Point Render at this repo and it reads this file.
+# Render reads this when you connect the repo. Blueprint -> New Blueprint Instance.
 services:
   - type: web
     name: north-hall-bbq
     runtime: docker
-    plan: starter          # a paid plan -- the free tier has no persistent disk
+    plan: starter                 # $7/mo. NOT free -- the free tier has no disk.
+    region: ohio                  # closest of Render's US regions to Georgia
     healthCheckPath: /api/config
+    autoDeployTrigger: commit     # every push to main redeploys
     envVars:
       - key: BASE_URL
-        sync: false        # set to https://bbq.jasonbales.com once DNS is pointed
-      - key: ADMIN_PASSWORD
-        sync: false        # set this in the Render dashboard, not in the repo
+        value: https://northhallbbq.com
       - key: DATA_DIR
         value: /data
+      - key: ADMIN_PASSWORD
+        sync: false               # set in the dashboard -- never in the repo
     disks:
       - name: bbq-data
-        mountPath: /data   # the SQLite file lives here and survives deploys
+        mountPath: /data          # bbq.db lives here and survives deploys
         sizeGB: 1
