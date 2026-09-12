@@ -477,5 +477,4 @@ app.get('/api/admin/export.csv', requireAdmin, (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\n  ${getSetting('business_name')} running at ${BASE_URL}`);
-  console.log(`  Admin: ${BASE_URL}/admin.html  (password: ${ADMIN_PASSWORD})\n`);
 });
