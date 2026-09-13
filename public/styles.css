@@ -725,7 +725,7 @@ header.site .hero h1,header.site h1{
   font-family:var(--font-display);font-weight:400;font-style:normal;
   /* one line, always: sized to the space beside the logo, letters given a
      little air so the word doesn't read as a solid block */
-  font-size:clamp(24px,3.6vw,54px);line-height:.95;letter-spacing:.07em;white-space:nowrap;
+  font-size:clamp(22px,4.05vw,60px);line-height:.95;letter-spacing:.07em;white-space:nowrap;
   transform:skewX(-7deg);transform-origin:left bottom;display:inline-block;
   position:relative;margin:2px 0 14px;
   color:#fff;-webkit-text-fill-color:#fff;background:none;
@@ -830,7 +830,7 @@ footer.site{margin-top:0;clip-path:none;background:#070e09;color:#93a297}
 @media (max-width:620px){
   .lockup{gap:14px;align-items:center}
   .lockup .mark{width:104px;height:104px}
-  header.site h1{font-size:clamp(19px,6vw,27px);letter-spacing:.05em;-webkit-text-stroke:2.5px #fff;
+  header.site h1{font-size:clamp(18px,5.7vw,26px);letter-spacing:.05em;-webkit-text-stroke:2.5px #fff;
     text-shadow:3px 3px 0 #070e09,5px 5px 0 rgba(0,0,0,.55)}
   .lockup .mark{width:88px;height:88px}
   .eyebrow{font-size:10.5px;letter-spacing:.14em}
@@ -840,4 +840,56 @@ footer.site{margin-top:0;clip-path:none;background:#070e09;color:#93a297}
   .trust .ico svg{width:22px;height:22px}
   .cook .date .big{font-size:42px}
   .card > h2:first-child{font-size:22px}
+}
+
+/* ======================================================================
+   HEADER, second pass: the logo gets a pool of light so it pops off the
+   stripes; the headline takes its shading from the logo's own flame -- hot
+   core, ember body, deep base, silver rim; the tagline ribbon sits on its
+   own line under the lockup; the eyebrow is gone.
+   ====================================================================== */
+.markwrap{position:relative;display:inline-block;flex:0 0 auto;line-height:0}
+.markwrap::before{content:"";position:absolute;inset:-22%;border-radius:50%;z-index:0;
+  background:
+    radial-gradient(closest-side, rgba(255,246,214,.38), rgba(255,246,214,.18) 45%, rgba(255,246,214,0) 72%),
+    radial-gradient(closest-side, rgba(247,193,74,.20), rgba(247,193,74,0) 70%);
+  filter:blur(2px)}
+.markwrap .mark{position:relative;z-index:1}
+.lockup{align-items:center;gap:26px}
+.lockup .mark{width:176px;height:176px;
+  filter:drop-shadow(0 12px 22px rgba(0,0,0,.6)) drop-shadow(0 0 14px rgba(255,236,190,.22))}
+
+/* the name: shaded like the flame it sits next to */
+header.site .hero h1,header.site h1{
+  letter-spacing:.075em;
+  color:#e7ebe8;-webkit-text-fill-color:#e7ebe8;
+  -webkit-text-stroke:4px #d9dedb;              /* silver rim, not white */
+  text-shadow:
+    -1px -1px 0 #ffffff,                          /* a sliver of chrome highlight top-left */
+     1px  1px 0 #8c9491,                          /* and shade bottom-right */
+     5px  5px 0 #0a0f0b, 8px 8px 0 rgba(0,0,0,.5),
+     0 18px 40px rgba(0,0,0,.6)}
+header.site h1::after{
+  background-image:linear-gradient(180deg,#fff2c2 0%,#ffd76a 22%,var(--ember-hot) 45%,var(--ember-mid) 72%,var(--ember-deep) 100%)}
+
+/* tagline on its own line, one line, under logo and name together */
+.brandbar{flex-direction:column;align-items:flex-start;gap:14px}
+.brandbar .lockup .ribbon{display:none}
+.brandbar > .ribbon{display:inline-block;margin:0}
+.brandbar > .ribbon span{white-space:nowrap}
+@media (max-width:900px){ .brandbar > .ribbon span{white-space:normal} }
+@media (max-width:620px){
+  .lockup{gap:14px}
+  .lockup .mark{width:96px;height:96px}
+  header.site h1{-webkit-text-stroke:2.5px #d9dedb;letter-spacing:.055em}
+}
+
+/* Size the name to the room actually beside the logo, whichever font loads.
+   The name is about 9.4 em wide in the fallback face (narrower in Anton), so
+   a font-size of (room / 9.4) always fits on one line with a little to spare. */
+.brandbar{container-type:inline-size}
+header.site .hero h1,header.site h1{
+  font-size:clamp(22px, calc((100cqi - 220px) / 9.6), 64px)}
+@media (max-width:620px){
+  header.site .hero h1,header.site h1{font-size:clamp(15px, calc((100cqi - 118px) / 9.6), 27px)}
 }

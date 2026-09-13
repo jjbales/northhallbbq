@@ -14,3 +14,6 @@ Claude outputs/
 # Camera originals. They're big and they carry GPS -- only the stripped,
 # resized copies in public/photos get published.
 originals/
+
+# the logo pack Jason downloads; the source files are in public/brand already
+brand/north-hall-bbq-logo.zip
