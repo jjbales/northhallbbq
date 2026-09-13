@@ -222,6 +222,36 @@ someone typed rather than running as code.
 Turn the whole thing off with **Show the comment box and reviews** in Settings;
 existing comments stay in the database, they just stop being served.
 
+### Photos customers send in
+
+A comment can carry up to three photos. They arrive as raw image bytes on their
+own route, keyed to a one-shot token that's only good for the comment just left
+and only for an hour — so it isn't an open file drop.
+
+Every upload is **re-encoded, never stored as sent**. That is what strips the
+GPS a phone writes into every photo, applies the orientation tag so a portrait
+shot isn't sideways, caps it at 1600px with a 640px thumb, and means a file
+dressed up as an image but carrying something else doesn't survive the trip.
+The format is checked against the file's actual bytes, not its name or its
+declared type — both are trivially faked.
+
+They land on the persistent disk under `DATA_DIR/uploads`, **not** in
+`public/`, and `/u/<name>.jpg` returns a plain 404 until you've published it.
+There's nothing to guess at and nothing to stumble on. You preview pending ones
+through an authenticated route.
+
+On the Photos & comments tab they sort to the top marked *Sent in*, with the
+comment they came with. Set Showing to Yes to put one in the album; the credit
+line defaults to the sender's name and is editable. Hiding a comment pulls its
+photos off the site; deleting one removes the files from disk for good.
+
+Approving someone's words does not publish their pictures — those are a
+separate call, on purpose.
+
+The disk is 1 GB and also holds the database. A published photo plus its thumb
+runs about 700 KB, so there's room for well over a thousand before it's worth
+thinking about.
+
 ## Supplies
 
 Wrap, pans, rub and fuel get bought in bulk and drawn down a cook at a time, so

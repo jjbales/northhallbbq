@@ -11,6 +11,7 @@ const { projectedUse, piecesForCook, recordPurchase, consumeForCook, releaseForC
         suppliesForCook, shelf, setRates, costByProtein } = require('./lib/supplies');
 const cold = require('./lib/coldstorage');
 const fb = require('./lib/feedback');
+const uploads = require('./lib/uploads');
 
 const app = express();
 app.set('trust proxy', true);
@@ -26,10 +27,32 @@ const stripe = process.env.STRIPE_SECRET_KEY
 
 app.use(cookieParser());
 // Stripe webhook needs the raw body, everything else gets JSON.
-app.use((req, res, next) =>
-  req.originalUrl === '/api/stripe/webhook' ? next() : express.json()(req, res, next)
-);
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/stripe/webhook') return next();
+  // photo uploads arrive as the raw image bytes, not as JSON or multipart
+  if (req.method === 'POST' && /^\/api\/feedback\/[^/]+\/photo$/.test(req.path)) {
+    return express.raw({ type: () => true, limit: uploads.MAX_BYTES })(req, res, next);
+  }
+  return express.json()(req, res, next);
+});
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Customer photos live off the persistent disk, not in public/, so one that
+// hasn't been approved is a 404 rather than a URL somebody could stumble on.
+app.get('/u/:name', (req, res) => {
+  const p = uploads.readable(req.params.name);
+  if (!p) return res.status(404).end();
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(p);
+});
+
+// The same files, for you, before you've decided.
+app.get('/api/admin/u/:name', requireAdmin, (req, res) => {
+  const p = uploads.readable(req.params.name, { admin: true });
+  if (!p) return res.status(404).end();
+  res.setHeader('Cache-Control', 'no-store');
+  res.sendFile(p);
+});
 
 const money = (c) => (c / 100).toFixed(2);
 const publicId = () => crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -85,7 +108,8 @@ app.get('/api/admin/proteins', requireAdmin, (req, res) =>
 app.get('/api/photos', (req, res) => {
   res.json(
     db.prepare(
-      `SELECT p.id, p.file, p.thumb, p.caption, p.featured, x.name AS protein_name
+      `SELECT p.id, p.file, p.thumb, p.caption, p.featured, p.source, p.credit,
+              x.name AS protein_name
          FROM photos p LEFT JOIN proteins x ON x.id = p.protein_id
         WHERE p.active = 1 ORDER BY p.sort_order, p.id`
     ).all()
@@ -98,6 +122,28 @@ app.get('/api/feedback', (req, res) => {
   res.json({ items: fb.approved(req.query.limit), summary: fb.summary() });
 });
 
+// A photo attached to a comment. The comment has to exist first, which keeps
+// this from being an open file drop.
+app.post('/api/feedback/:token/photo', async (req, res) => {
+  try {
+    if (getSetting('show_feedback') !== '1') return res.status(404).json({ error: 'Not taking these right now.' });
+    const row = db.prepare(
+      `SELECT * FROM feedback WHERE upload_token = ?
+         AND created_at > datetime('now', '-1 hour')`
+    ).get(String(req.params.token));
+    if (!row) {
+      return res.status(404).json({ error: "That comment's gone stale. Send it again with the photo attached." });
+    }
+    const already = db.prepare('SELECT COUNT(*) c FROM photos WHERE feedback_id = ?').get(row.id).c;
+    if (already >= 3) return res.status(429).json({ error: 'Three photos is plenty — thank you.' });
+
+    const photo = await uploads.accept(req.body, { feedbackId: row.id, credit: row.name });
+    res.json({ ok: true, id: photo.id });
+  } catch (e) {
+    res.status(e.code || 400).json({ error: e.message });
+  }
+});
+
 app.post('/api/feedback', (req, res) => {
   try {
     const { name, rating, body, email, phone, order, website } = req.body || {};
@@ -105,7 +151,9 @@ app.post('/api/feedback', (req, res) => {
       name, rating, body, email, phone, orderPublicId: order,
       ip: req.ip, trap: website,     // "website" is the honeypot
     });
-    res.json({ ok: true, message: getSetting('feedback_thanks') });
+    // the token lets the browser attach photos to the comment it just left,
+    // and nothing else
+    res.json({ ok: true, message: getSetting('feedback_thanks'), token: out.token || null });
   } catch (e) {
     res.status(e.code || 400).json({ error: e.message });
   }
@@ -457,22 +505,28 @@ app.post('/api/admin/photos/scan', requireAdmin, (req, res) => {
 
 app.get('/api/admin/photos', requireAdmin, (req, res) =>
   res.json(db.prepare(
-    `SELECT p.*, x.name AS protein_name FROM photos p
-       LEFT JOIN proteins x ON x.id = p.protein_id ORDER BY p.sort_order, p.id`
+    `SELECT p.*, x.name AS protein_name,
+            f.name AS from_name, f.body AS from_body, f.status AS from_status
+       FROM photos p
+       LEFT JOIN proteins x ON x.id = p.protein_id
+       LEFT JOIN feedback f ON f.id = p.feedback_id
+      ORDER BY p.source = 'customer' DESC, p.active ASC, p.sort_order, p.id`
   ).all())
 );
 
 app.post('/api/admin/photos', requireAdmin, (req, res) => {
   try {
-    const { id, caption, protein_id, featured, active, sort_order } = req.body || {};
+    const { id, caption, protein_id, featured, active, sort_order, credit } = req.body || {};
     const p = db.prepare('SELECT * FROM photos WHERE id = ?').get(Number(id));
     if (!p) return res.status(404).json({ error: 'No such photo.' });
     const order = sort_order === undefined || sort_order === null || sort_order === ''
       ? p.sort_order : Number(sort_order);
     db.prepare(
-      `UPDATE photos SET caption=?, protein_id=?, featured=?, active=?, sort_order=? WHERE id=?`
+      `UPDATE photos SET caption=?, protein_id=?, featured=?, active=?, sort_order=?,
+              credit=COALESCE(?, credit) WHERE id=?`
     ).run(String(caption || '').slice(0, 300), protein_id ? Number(protein_id) : null,
-          featured ? 1 : 0, active === 0 || active === false ? 0 : 1, order, p.id);
+          featured ? 1 : 0, active === 0 || active === false ? 0 : 1, order,
+          credit === undefined ? null : String(credit).slice(0, 80), p.id);
     res.json(db.prepare('SELECT * FROM photos ORDER BY sort_order, id').all());
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -480,8 +534,12 @@ app.post('/api/admin/photos', requireAdmin, (req, res) => {
 });
 
 app.delete('/api/admin/photos/:id', requireAdmin, (req, res) => {
-  // drops it from the album; the file itself stays on disk
-  db.prepare('DELETE FROM photos WHERE id = ?').run(Number(req.params.id));
+  const row = db.prepare('SELECT * FROM photos WHERE id = ?').get(Number(req.params.id));
+  if (row) {
+    // a customer's upload goes for good, files and all; your own stay on disk
+    uploads.remove(row);
+    db.prepare('DELETE FROM photos WHERE id = ?').run(row.id);
+  }
   res.json({ ok: true });
 });
 
@@ -502,6 +560,11 @@ app.post('/api/admin/feedback/:id', requireAdmin, (req, res) => {
     db.prepare(
       `UPDATE feedback SET status=?, reply=?, reviewed_at=datetime('now') WHERE id=?`
     ).run(next, reply === undefined ? row.reply : String(reply).slice(0, 1000), row.id);
+    // hiding what someone wrote should take their pictures down with it;
+    // approving the words doesn't publish the pictures -- those are their own call
+    if (next !== 'approved') {
+      db.prepare("UPDATE photos SET active = 0 WHERE feedback_id = ?").run(row.id);
+    }
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -509,7 +572,12 @@ app.post('/api/admin/feedback/:id', requireAdmin, (req, res) => {
 });
 
 app.delete('/api/admin/feedback/:id', requireAdmin, (req, res) => {
-  db.prepare('DELETE FROM feedback WHERE id = ?').run(Number(req.params.id));
+  const id = Number(req.params.id);
+  for (const p of db.prepare('SELECT * FROM photos WHERE feedback_id = ?').all(id)) {
+    uploads.remove(p);
+    db.prepare('DELETE FROM photos WHERE id = ?').run(p.id);
+  }
+  db.prepare('DELETE FROM feedback WHERE id = ?').run(id);
   res.json({ ok: true });
 });
 

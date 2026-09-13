@@ -21,7 +21,10 @@
           <p class="ribbon"><span id="galHead">Off the pit</span></p>
         </div>
       </div>
-      <span class="navlinks"><a href="/">&larr; Back to ordering</a></span>
+      <nav class="navlinks">
+        <a href="/" class="nav-main">&larr; Back to ordering</a>
+        <a href="admin.html" class="nav-quiet">Owner login</a>
+      </nav>
     </div>
   </div>
 </header>
@@ -53,7 +56,7 @@
       </div>
       <div class="field">
         <label>How was it?</label>
-        <div class="stars" id="stars" role="radiogroup" aria-label="Rating">
+        <div class="rate" id="stars" role="radiogroup" aria-label="Rating">
           <button type="button" data-star="1" aria-label="1 star">&#9733;</button>
           <button type="button" data-star="2" aria-label="2 stars">&#9733;</button>
           <button type="button" data-star="3" aria-label="3 stars">&#9733;</button>
@@ -71,6 +74,14 @@
         <div class="field"><label for="fPhone">Phone (optional, stays private)</label>
           <input id="fPhone" type="tel" maxlength="40" autocomplete="tel"></div>
       </div>
+      <div class="field">
+        <label for="fPics">Add a photo or two (optional)</label>
+        <input id="fPics" type="file" accept="image/*" multiple>
+        <div class="small muted">Up to three, 12 MB each. They only go in the album if
+        I put them there — and I strip the location data off every one.</div>
+        <div id="fPreview" class="picprev"></div>
+      </div>
+
       <!-- a bot fills this in; a person never sees it -->
       <div class="trap" aria-hidden="true">
         <label for="fWebsite">Website</label>
@@ -119,7 +130,9 @@ function renderAlbum() {
   box.innerHTML = PHOTOS.map((p, i) => `
     <button class="shot" data-i="${i}" aria-label="${esc(p.caption || 'Open photo')}">
       <img src="${esc(p.thumb || p.file)}" alt="${esc(p.caption || '')}" loading="lazy">
-      ${p.caption ? `<span class="cap">${esc(p.caption)}</span>` : ''}
+      ${(p.caption || (p.source === 'customer' && p.credit))
+        ? `<span class="cap">${esc(p.caption || '')}${p.source === 'customer' && p.credit
+            ? `<em class="by">photo by ${esc(p.credit)}</em>` : ''}</span>` : ''}
     </button>`).join('');
   box.querySelectorAll('.shot').forEach(b =>
     b.addEventListener('click', () => openLight(Number(b.dataset.i))));
@@ -130,7 +143,8 @@ function openLight(i) {
   const p = PHOTOS[at];
   $('#lImg').src = p.file;
   $('#lImg').alt = p.caption || '';
-  $('#lCap').textContent = p.caption || '';
+  $('#lCap').textContent = [p.caption, p.source === 'customer' && p.credit ? `photo by ${p.credit}` : '']
+    .filter(Boolean).join(' · ');
   $('#light').hidden = false;
   document.body.style.overflow = 'hidden';
   $('#lClose').focus();
@@ -182,10 +196,46 @@ $('#fBody').addEventListener('input', () => {
   $('#fCount').textContent = n > 1700 ? `${2000 - n} characters left` : '';
 });
 
+/* ------------------------------------------------------------ photos */
+const MAX_PIC = 12 * 1024 * 1024;
+let pics = [];
+
+$('#fPics').addEventListener('change', () => {
+  const picked = Array.from($('#fPics').files || []);
+  pics = [];
+  const problems = [];
+  for (const f of picked) {
+    if (pics.length >= 3) { problems.push('Only the first three.'); break; }
+    if (!f.type.startsWith('image/')) { problems.push(`${f.name} isn't a photo.`); continue; }
+    if (f.size > MAX_PIC) { problems.push(`${f.name} is over 12 MB.`); continue; }
+    pics.push(f);
+  }
+  $('#fPreview').innerHTML = pics.map((f, i) => `
+    <div class="pic"><img alt="" data-prev="${i}">
+      <button type="button" data-picrm="${i}" aria-label="Remove ${esc(f.name)}">&times;</button></div>`).join('');
+  pics.forEach((f, i) => {
+    const r = new FileReader();
+    r.onload = () => { const el = $(`[data-prev="${i}"]`); if (el) el.src = r.result; };
+    r.readAsDataURL(f);
+  });
+  $('#fPreview').querySelectorAll('[data-picrm]').forEach(b =>
+    b.addEventListener('click', () => {
+      pics.splice(Number(b.dataset.picrm), 1);
+      const dt = new DataTransfer();
+      pics.forEach(f => dt.items.add(f));
+      $('#fPics').files = dt.files;
+      $('#fPics').dispatchEvent(new Event('change'));
+    }));
+  $('#fMsg').innerHTML = problems.length
+    ? `<div class="notice err">${esc(problems.join(' '))}</div>` : '';
+});
+
 $('#fSend').addEventListener('click', async () => {
   const btn = $('#fSend');
   btn.disabled = true;
+  const say = t => { btn.textContent = t; };
   try {
+    say('Sending…');
     const d = await api('/api/feedback', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -194,10 +244,30 @@ $('#fSend').addEventListener('click', async () => {
         order: $('#fOrder').value, website: $('#fWebsite').value,
       }),
     });
-    $('#fForm').innerHTML = `<div class="notice ok">${esc(d.message || 'Thank you.')}</div>`;
+
+    // The comment is in either way. Photos ride along after, so a failed
+    // upload never costs somebody the thing they actually wrote.
+    let sent = 0, failed = 0;
+    if (d.token && pics.length) {
+      for (const [i, f] of pics.entries()) {
+        say(`Sending photo ${i + 1} of ${pics.length}…`);
+        try {
+          await api(`/api/feedback/${d.token}/photo`, {
+            method: 'POST', headers: { 'Content-Type': f.type || 'application/octet-stream' },
+            body: f,
+          });
+          sent++;
+        } catch (e) { failed++; }
+      }
+    }
+    const extra = sent ? ` ${sent} photo${sent === 1 ? '' : 's'} came through too.` : '';
+    const bad = failed ? ` (${failed} wouldn't upload — no harm, your comment is in.)` : '';
+    $('#fbForm').innerHTML =
+      `<div class="notice ok">${esc(d.message || 'Thank you.')}${esc(extra)}${esc(bad)}</div>`;
   } catch (e) {
     $('#fMsg').innerHTML = `<div class="notice err">${esc(e.message)}</div>`;
     btn.disabled = false;
+    say('Send it');
   }
 });
 

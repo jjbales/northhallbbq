@@ -183,7 +183,9 @@
         </div>
         <p class="small muted">Drop photos into the site's <code>public/photos</code> folder, then hit
         "Look for new photos". Caption them here — the caption is what a customer reads, and what a
-        screen reader says. "On the shop page" puts it in the strip above the cook dates.</p>
+        screen reader says. "On the shop page" puts it in the strip above the cook dates.
+        Photos customers send in show up at the top marked <em>Sent in</em>; set Showing to Yes to
+        put one in the album. Removing a customer's photo deletes the file for good.</p>
         <div id="photoMsg"></div>
         <div id="photoRows" data-region="photos"></div>
         <button class="btn sm" id="savePhotos" style="margin-top:12px">Save the album</button>
@@ -474,11 +476,21 @@ function renderPhotos() {
   $('#photoRows').innerHTML = PHOTOS.map((p, i) => `
     <div class="row" style="align-items:center;border-bottom:1px solid var(--line);padding:10px 0">
       <div class="field" style="flex:0 0 auto;padding-bottom:0">${arrows('photo', i, PHOTOS.length)}</div>
-      <img src="${(p.thumb || p.file)}" alt="" style="width:84px;height:62px;object-fit:cover;
+      <img src="${p.source === 'customer'
+        ? '/api/admin/u/' + (p.thumb || '').split('/').pop() : (p.thumb || p.file)}"
+        alt="" style="width:84px;height:62px;object-fit:cover;
         border-radius:8px;border:1px solid var(--line);flex:0 0 auto">
+      ${p.source === 'customer' ? `<div class="field" style="flex:1 1 100%;padding-bottom:0">
+        <span class="badge ${p.active ? 'open' : 'low'}">${p.active ? 'On the site' : 'Sent in — not published'}</span>
+        <span class="small muted">from ${esc(p.from_name || 'a customer')}${p.from_body
+          ? ` — “${esc(String(p.from_body).slice(0, 90))}${String(p.from_body).length > 90 ? '…' : ''}”` : ''}</span>
+      </div>` : ''}
       <div class="field" style="flex:2 1 240px"><label>Caption</label>
         <input type="text" maxlength="300" value="${(p.caption || '').replace(/"/g, '&quot;')}"
                data-ph="${i}" data-f="caption" placeholder="Eight butts, twelve hours in"></div>
+      ${p.source === 'customer' ? `<div class="field" style="flex:0 0 150px"><label>Credit</label>
+        <input type="text" maxlength="80" value="${(p.credit || '').replace(/"/g, '&quot;')}"
+               data-ph="${i}" data-f="credit" placeholder="Dale P."></div>` : ''}
       <div class="field" style="flex:0 0 130px"><label>Of what</label>
         <select data-ph="${i}" data-f="protein_id">
           <option value="">—</option>
@@ -501,7 +513,8 @@ function renderPhotos() {
   $('#photoRows').querySelectorAll('[data-ph]').forEach(el =>
     el.addEventListener('input', () => {
       const p = PHOTOS[el.dataset.ph], f = el.dataset.f;
-      p[f] = f === 'caption' ? el.value : (el.value === '' ? null : Number(el.value));
+      p[f] = (f === 'caption' || f === 'credit') ? el.value
+        : (el.value === '' ? null : Number(el.value));
     }));
   $('#photoRows').querySelectorAll('[data-phrm]').forEach(b =>
     b.addEventListener('click', async () => {

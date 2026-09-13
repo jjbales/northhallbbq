@@ -439,11 +439,11 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
 @media (max-width:560px){ .light{padding:12px} .light .lnav{font-size:26px;padding:8px 11px} }
 
 /* ---- ratings and what folks say ----------------------------------------- */
-.stars{display:flex;align-items:center;gap:3px}
-.stars button{background:none;border:0;font-size:27px;line-height:1;cursor:pointer;
+.rate{display:flex;align-items:center;gap:3px}
+.rate button{background:none;border:0;font-size:27px;line-height:1;cursor:pointer;
   color:#d7d2c7;padding:0 2px;transition:color .12s}
-.stars button.on,.stars button:hover{color:var(--ember-mid)}
-.stars #starNote{margin-left:10px}
+.rate button.on,.rate button:hover{color:var(--ember-mid)}
+.rate #starNote{margin-left:10px;letter-spacing:normal}
 .srow{color:#d7d2c7;letter-spacing:1px}
 .srow .on{color:var(--ember-mid)}
 .said{margin:0 0 14px;padding:13px 15px;border:1px solid var(--line);border-left:4px solid var(--green);
@@ -460,4 +460,30 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
   background:#efece6;aspect-ratio:4/3}
 .feat img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
 .feat:hover img{transform:scale(1.05)}
-.navlinks{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+/* The photo link is the one we want people to take; the owner link just has
+   to be findable, tucked out on the right. */
+.navlinks{display:flex;gap:20px;align-items:baseline;flex-wrap:wrap;
+  justify-content:flex-end;margin-left:auto}
+.navlinks .nav-main{font-family:var(--font-head);font-weight:600;font-size:17px;
+  letter-spacing:.04em;text-transform:uppercase;text-decoration:none;
+  padding-bottom:3px;border-bottom:2px solid rgba(247,193,74,.55)}
+.navlinks .nav-main:hover{border-bottom-color:var(--ember-hot)}
+.navlinks .nav-quiet{font-size:13px;opacity:.72}
+.navlinks .nav-quiet:hover{opacity:1}
+@media (max-width:700px){
+  .navlinks{gap:14px}
+  .navlinks .nav-main{font-size:15px}
+  .navlinks .nav-quiet{font-size:12px}
+}
+
+/* ---- picking photos to send in ------------------------------------------ */
+.picprev{display:flex;gap:9px;flex-wrap:wrap;margin-top:9px}
+.picprev .pic{position:relative;width:92px;height:92px;border-radius:9px;overflow:hidden;
+  border:1px solid var(--line);background:#efece6}
+.picprev .pic img{width:100%;height:100%;object-fit:cover;display:block}
+.picprev .pic button{position:absolute;top:3px;right:3px;width:22px;height:22px;padding:0;
+  border:0;border-radius:50%;background:rgba(9,18,12,.72);color:#fff;font-size:15px;
+  line-height:1;cursor:pointer}
+.picprev .pic button:hover{background:rgba(194,72,31,.92)}
+input[type=file]{font:inherit;font-size:14px;padding:8px 0}
+.shot .cap .by{display:block;font-style:normal;opacity:.82;font-size:11.5px;margin-top:2px}
