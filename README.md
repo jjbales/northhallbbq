@@ -177,6 +177,19 @@ every page; `favicon-32/64.png` and `apple-touch-icon.png` are cut from the same
 file. The older drawn marks (`mark-*.svg`) are still in the folder but nothing
 uses them.
 
+## The header
+
+Logo on the left, the name and the tagline ribbon stacked to its right, and
+that pair centred over the row below — which runs from the first trust tile to
+the far edge of the smoker. A pool of warm light sits behind the badge so it
+reads against something pale rather than the dark stripes.
+
+The pieces size off each other rather than off fixed breakpoints: the logo's
+width and the gap beside it are CSS variables, and the name's font-size is
+whatever is left over divided by its width in ems. That's what keeps it on one
+line at every screen width and whichever font loads. On a phone the tagline
+drops full-width beneath the logo and name instead of squeezing into a column.
+
 ## The look
 
 The site takes its cues from the softball tryout graphics Jason shared: a

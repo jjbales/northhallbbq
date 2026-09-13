@@ -11,6 +11,9 @@
   --r:10px; --shadow:0 1px 2px rgba(17,19,17,.06), 0 8px 24px rgba(17,19,17,.07);
 }
 *{box-sizing:border-box}
+/* clip, not hidden: clip doesn't make the body a scroll container, so sticky
+   and fixed children still behave. Kills sub-pixel sideways drift on phones. */
+html,body{overflow-x:clip}
 body{margin:0;background:var(--paper);color:var(--ink);
   font:16px/1.6 var(--font-body);-webkit-font-smoothing:antialiased}
 h1,h2,h3{font-family:var(--font-head);font-weight:600;letter-spacing:.01em;
@@ -409,7 +412,7 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
 
 /* ---- the album ---------------------------------------------------------- */
 .site.slim{padding-bottom:26px}
-.site.slim .brandbar{align-items:center}
+.site.slim{padding-bottom:22px}
 .album{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 .shot{position:relative;display:block;padding:0;border:1px solid var(--line);border-radius:12px;
   overflow:hidden;background:#efece6;cursor:pointer;aspect-ratio:4/3}
@@ -491,7 +494,10 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
   border:0;border-radius:50%;background:rgba(9,18,12,.72);color:#fff;font-size:15px;
   line-height:1;cursor:pointer}
 .picprev .pic button:hover{background:rgba(194,72,31,.92)}
-input[type=file]{font:inherit;font-size:14px;padding:8px 0}
+input[type=file]{font:inherit;font-size:14px;padding:8px 0;max-width:100%;
+  /* the native control has a wide intrinsic size that scrolled narrow phones */
+  box-sizing:border-box}
+@media (max-width:420px){ input[type=file]{font-size:12.5px} }
 .shot .cap .by{display:block;font-style:normal;opacity:.82;font-size:11.5px;margin-top:2px}
 
 /* ---- what you're buying, on the order form ------------------------------ */
@@ -556,30 +562,58 @@ input[type=file]{font:inherit;font-size:14px;padding:8px 0}
 /* ==================================================== hero v3: the pit's lit */
 /* Grid areas, so the smoker can sit beside the copy on a desktop and drop in
    under the title on a phone without the markup changing. */
-.hero{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:12px 32px;align-items:end;
-  max-width:1120px;
-  grid-template-areas:"brand art" "nav art" "trust art"}
-.hero-copy{display:contents}
-.hero .brandbar{grid-area:brand}
-.hero .navlinks{grid-area:nav}
-.hero .trust{grid-area:trust;grid-template-columns:repeat(2,minmax(0,1fr))}
-.hero-art{grid-area:art;position:relative;z-index:1;align-self:end;margin-bottom:-26px}
+/* the hero stacks: the lockup, then the nav, then the trust row beside the
+   smoker. The lockup is centred across that bottom row's full width. */
+.hero{max-width:1120px}
+.hero-bottom{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:0 28px;align-items:end}
+.hero .trust{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start}
+/* The plume is most of the drawing's height and mostly empty, so the art is
+   pulled up into the band beside the nav rather than pushing the tiles down,
+   and the top is faded so the smoke dissolves instead of ending on an edge. */
+.hero-art{position:relative;z-index:0;align-self:end;margin:-150px 0 -30px}
+.hero-art .smoker{
+  -webkit-mask-image:linear-gradient(180deg, transparent 0%, rgba(0,0,0,.35) 12%, #000 30%);
+          mask-image:linear-gradient(180deg, transparent 0%, rgba(0,0,0,.35) 12%, #000 30%)}
+.navlinks,.hero-lockup,.trust{position:relative;z-index:2}
+
+/* logo left, name and tagline stacked to its right, the pair centred */
+/* The logo's width and the gap are variables so the name can be sized from
+   exactly what's left over -- that's what keeps it on one line at every width
+   without guessing. */
+.hero,.hero-lockup{--logo:clamp(84px, 13.5vw, 176px); --lgap:clamp(12px, 2.2vw, 26px)}
+/* the photos page wears a smaller version of the same lockup */
+/* the container has to be an ancestor with a real width -- the lockup itself
+   is fit-content, so sizing off it would be circular */
+.site.slim .wrap{container-type:inline-size}
+.hero-lockup.slim{--logo:clamp(66px, 9vw, 116px); --lgap:clamp(11px, 1.6vw, 20px);margin-bottom:4px}
+/* Logo on the left spanning both rows; the name on the top row and the
+   tagline under it. On a phone the tagline drops below the pair instead of
+   squeezing into a narrow column. */
+.hero-lockup{display:grid;width:fit-content;max-width:100%;margin:0 auto 18px;
+  /* column one is pinned to the logo: a tagline spanning both columns would
+     otherwise widen it and shove the name off the right edge */
+  grid-template-columns:var(--logo) minmax(0,auto);gap:10px var(--lgap);align-items:center;
+  grid-template-areas:"logo name" "logo tag"}
+.hero-lockup .markwrap{grid-area:logo;align-self:center}
+.hero-lockup .mark{width:var(--logo);height:auto}
+.hero-lockup h1{grid-area:name;justify-self:start;align-self:end}
+.hero-lockup .ribbon{grid-area:tag;justify-self:start;align-self:start}
 .hero-art .smoker{width:100%;height:auto;display:block;
   filter:drop-shadow(0 18px 22px rgba(0,0,0,.5))}
 header.site .hero h1{font-size:clamp(30px,4.6vw,56px)}
 .hero .trust div{padding:11px 12px 10px 16px}
 .hero .trust b{font-size:20px}
 .hero .trust div:last-child{font-size:12px}
-header.site{padding:44px 0 70px}
+header.site{padding:40px 0 56px}
 @media (max-width:900px){
-  .hero{grid-template-columns:1fr;gap:0;
-    grid-template-areas:"brand" "art" "nav" "trust"}
-  .hero-art{width:min(260px,70%);margin:4px auto 2px;align-self:center}
-  .hero .navlinks{margin-top:8px}
+  .hero-bottom{grid-template-columns:1fr;gap:0}
+  .hero-art{order:-1;width:min(260px,70%);margin:2px auto 6px;align-self:center}
+  .hero .trust{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 8px}
 }
 @media (max-width:620px){
   .hero-art{width:min(230px,64%)}
-  .hero .trust b{font-size:17px}
+  .hero .trust b{font-size:15px}
+  .hero-lockup{gap:14px;margin-bottom:16px}
 }
 
 /* printed-flyer texture: halftone dots + the diagonal pinstripes, faint */
@@ -754,23 +788,23 @@ header.site h1::after{content:attr(data-text);position:absolute;inset:0;z-index:
   text-shadow:1px 1px 0 rgba(0,0,0,.35)}
 
 /* nav on the dark ground */
-.navlinks{border-top-color:rgba(255,255,255,.12);margin-top:22px}
+.navlinks{border-top-color:rgba(255,255,255,.12);margin-top:16px;padding-top:11px}
 .navlinks .nav-main{font-family:var(--font-head);font-weight:600;letter-spacing:.08em;
   color:#fff;border-bottom-color:var(--ember-mid)}
 
 /* ---- trust: icon circles, like the "NATIONAL BRAND / ELITE PLAYER..." row */
 .hero .trust{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:24px}
 .trust div{background:none;border:0;backdrop-filter:none;clip-path:none;padding:0;
-  text-align:center;font-size:11.5px;letter-spacing:.06em;color:#c8d3cb;line-height:1.3}
+  text-align:center;font-size:12px;letter-spacing:.06em;color:#c8d3cb;line-height:1.35}
 .trust div::before{display:none}
-.trust .ico{display:flex;align-items:center;justify-content:center;width:52px;height:52px;
-  margin:0 auto 8px;border-radius:50%;background:#0d1811;
+.trust .ico{display:flex;align-items:center;justify-content:center;width:62px;height:62px;
+  margin:0 auto 11px;border-radius:50%;background:#0d1811;
   border:2px solid var(--ember-mid);box-shadow:0 0 0 3px #070e09,0 0 0 4px rgba(232,130,42,.35),0 8px 18px rgba(0,0,0,.5)}
-.trust .ico svg{width:26px;height:26px;fill:none;stroke:var(--ember-hot);stroke-width:1.9;
+.trust .ico svg{width:31px;height:31px;fill:none;stroke:var(--ember-hot);stroke-width:1.9;
   stroke-linecap:round;stroke-linejoin:round}
 .trust b{display:block;font-family:var(--font-head);font-weight:600;font-size:14px;letter-spacing:.06em;
   color:#fff;background:none;-webkit-text-fill-color:#fff;margin-bottom:2px}
-.hero .trust b{font-size:14px}
+.hero .trust b{font-size:15px}
 .hero .trust div{padding:0}
 
 /* ---- the smoker drops a little lower so the firebox glow meets the edge */
@@ -849,11 +883,14 @@ footer.site{margin-top:0;clip-path:none;background:#070e09;color:#93a297}
    own line under the lockup; the eyebrow is gone.
    ====================================================================== */
 .markwrap{position:relative;display:inline-block;flex:0 0 auto;line-height:0}
-.markwrap::before{content:"";position:absolute;inset:-22%;border-radius:50%;z-index:0;
+/* a genuine pool of light, so the badge sits on something pale rather than on
+   the dark stripes */
+.markwrap::before{content:"";position:absolute;inset:-58%;border-radius:50%;z-index:0;
   background:
-    radial-gradient(closest-side, rgba(255,246,214,.38), rgba(255,246,214,.18) 45%, rgba(255,246,214,0) 72%),
-    radial-gradient(closest-side, rgba(247,193,74,.20), rgba(247,193,74,0) 70%);
-  filter:blur(2px)}
+    radial-gradient(closest-side, rgba(255,253,246,.95), rgba(253,245,226,.72) 32%,
+                    rgba(249,226,178,.42) 50%, rgba(247,205,124,.20) 66%,
+                    rgba(247,193,74,.07) 82%, rgba(247,193,74,0) 100%);
+  filter:blur(7px)}
 .markwrap .mark{position:relative;z-index:1}
 .lockup{align-items:center;gap:26px}
 .lockup .mark{width:176px;height:176px;
@@ -873,23 +910,36 @@ header.site h1::after{
   background-image:linear-gradient(180deg,#fff2c2 0%,#ffd76a 22%,var(--ember-hot) 45%,var(--ember-mid) 72%,var(--ember-deep) 100%)}
 
 /* tagline on its own line, one line, under logo and name together */
-.brandbar{flex-direction:column;align-items:flex-start;gap:14px}
-.brandbar .lockup .ribbon{display:none}
-.brandbar > .ribbon{display:inline-block;margin:0}
-.brandbar > .ribbon span{white-space:nowrap}
-@media (max-width:900px){ .brandbar > .ribbon span{white-space:normal} }
+.hero-lockup .ribbon{display:inline-block;margin:0}
+.hero-lockup .ribbon span{white-space:nowrap}
+@media (max-width:900px){ .hero-lockup .ribbon span{white-space:normal} }
 @media (max-width:620px){
   .lockup{gap:14px}
   .lockup .mark{width:96px;height:96px}
   header.site h1{-webkit-text-stroke:2.5px #d9dedb;letter-spacing:.055em}
+  .hero-lockup{margin-bottom:14px;
+    grid-template-areas:"logo name" "tag tag"}
+  .hero-lockup .ribbon{justify-self:stretch;text-align:center;margin-top:2px}
+  .hero-lockup .ribbon span{white-space:normal}
+  .markwrap::before{inset:-40%}
 }
 
 /* Size the name to the room actually beside the logo, whichever font loads.
    The name is about 9.4 em wide in the fallback face (narrower in Anton), so
    a font-size of (room / 9.4) always fits on one line with a little to spare. */
-.brandbar{container-type:inline-size}
-header.site .hero h1,header.site h1{
-  font-size:clamp(22px, calc((100cqi - 220px) / 9.6), 64px)}
-@media (max-width:620px){
-  header.site .hero h1,header.site h1{font-size:clamp(15px, calc((100cqi - 118px) / 9.6), 27px)}
+.hero{container-type:inline-size}
+/* sized to the room left over beside the logo, so it holds one line whether
+   the display face loads or the wider fallback does */
+header.site .hero h1{
+  font-size:clamp(15px, calc((100cqi - var(--logo) - var(--lgap) - 14px) / 9.9), 62px)}
+header.site .hero-lockup.slim h1{
+  font-size:clamp(19px, calc((100cqi - var(--logo) - var(--lgap) - 14px) / 9.9), 46px)}
+header.site .hero-lockup.slim h1{-webkit-text-stroke-width:3px}
+
+/* On the narrowest phones the quantity stepper was a few pixels wider than
+   the card, which scrolled the whole page sideways. */
+@media (max-width:400px){
+  .qty{gap:4px}
+  .qty button{width:30px;height:30px;font-size:16px}
+  .qty input{width:54px;height:30px}
 }
