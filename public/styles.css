@@ -342,7 +342,8 @@ header.site h1{position:relative;display:block;color:#fff;
 
 /* trust blocks: bordered and notched, like the flyer's panels */
 .trust{border-top:0;gap:12px;margin-top:34px;padding-top:0}
-.trust div{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.16);
+.trust div{background:rgba(9,18,12,.52);border:1px solid rgba(255,255,255,.17);
+  backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
   padding:12px 10px 11px;
   clip-path:polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)}
 .trust b{font-size:22px;margin-bottom:4px}
