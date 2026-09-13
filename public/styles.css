@@ -460,16 +460,22 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
   background:#efece6;aspect-ratio:4/3}
 .feat img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
 .feat:hover img{transform:scale(1.05)}
-/* The photo link is the one we want people to take; the owner link just has
-   to be findable, tucked out on the right. */
+/* The photo link is the one we want people to take, so it gets the left edge
+   and the weight. The owner link sits all the way over on the right, out of
+   the way of anyone who isn't Jason. */
 .navlinks{display:flex;gap:20px;align-items:baseline;flex-wrap:wrap;
-  justify-content:flex-end;margin-left:auto}
+  justify-content:space-between;width:100%;margin-top:14px;
+  padding-top:12px;border-top:1px solid rgba(255,255,255,.13)}
+/* these sit on the dark header, outside .brandbar, so they need their own
+   colour -- the default link green disappears against it */
+.navlinks a{color:#e6ece7;text-decoration:none}
+.navlinks a:hover{color:#fff}
 .navlinks .nav-main{font-family:var(--font-head);font-weight:600;font-size:17px;
   letter-spacing:.04em;text-transform:uppercase;text-decoration:none;
   padding-bottom:3px;border-bottom:2px solid rgba(247,193,74,.55)}
 .navlinks .nav-main:hover{border-bottom-color:var(--ember-hot)}
-.navlinks .nav-quiet{font-size:13px;opacity:.72}
-.navlinks .nav-quiet:hover{opacity:1}
+.navlinks .nav-quiet{font-size:13px;color:#b9c7bc}
+.navlinks .nav-quiet:hover{color:#fff}
 @media (max-width:700px){
   .navlinks{gap:14px}
   .navlinks .nav-main{font-size:15px}
