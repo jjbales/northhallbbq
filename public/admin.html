@@ -53,7 +53,7 @@
       <button data-tab="settings" aria-selected="false">Settings</button>
     </div>
 
-    <section id="tab-cooks"><div id="cookList"></div></section>
+    <section id="tab-cooks"><div id="cookList" data-region="cooks"></div></section>
 
     <section id="tab-new" class="card hide">
       <h2>Schedule a cook</h2>
@@ -90,7 +90,7 @@
       <h3 style="margin-top:26px">Reminders due</h3>
       <div id="remindList"></div>
       <details style="margin-top:22px"><summary>Message wording</summary>
-        <div id="tplForm" style="margin-top:12px"></div>
+        <div id="tplForm" data-region="msgs" style="margin-top:12px"></div>
         <button class="btn sm" id="saveTpl">Save wording</button>
         <span class="small muted" id="tplMsg" style="margin-left:8px"></span>
         <p class="small muted" style="margin-top:10px">Placeholders: <code>{name}</code> <code>{date}</code>
@@ -107,7 +107,7 @@
         <p class="small muted">Buy in bulk, log the receipt, and every cook prices itself off what you
         actually paid. "Per butt" and "per cook" are how fast it goes.</p>
         <div id="supLow"></div>
-        <div style="overflow-x:auto"><div id="supTable"></div></div>
+        <div style="overflow-x:auto"><div id="supTable" data-region="supplies"></div></div>
         <button class="btn ghost sm" id="addSupplyItem" type="button" style="margin-top:10px">+ Add an item</button>
         <button class="btn sm" id="saveSupplies" style="margin-top:10px">Save the shelf</button>
         <span class="small muted" id="supMsg" style="margin-left:8px"></span>
@@ -136,12 +136,12 @@
     <section id="tab-menu" class="card hide">
       <h2>Menu &amp; prices</h2>
       <p class="small muted" style="margin-top:-6px">“Butt equivalent” is how much of one whole shoulder a single unit uses up. That's what drives the countdown.</p>
-      <div id="menuRows"></div>
+      <div id="menuRows" data-region="menu"></div>
     </section>
 
     <section id="tab-settings" class="card hide">
       <h2>Settings</h2>
-      <div id="settingsForm"></div>
+      <div id="settingsForm" data-region="settings"></div>
       <button class="btn" id="saveSettings" style="margin-top:10px">Save settings</button>
       <span id="setMsg" class="small muted" style="margin-left:10px"></span>
       <hr style="margin:24px 0;border:0;border-top:1px solid var(--line)">
@@ -171,6 +171,27 @@ async function api(url, opts) {
 const post = (url, body) => api(url, {
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
 });
+
+/* ------------------------------------------- don't type over the customer */
+// The page refreshes itself every half minute so the board stays live. That
+// must never wipe out something you're in the middle of filling in -- which it
+// used to do, quietly, mid-sentence.
+const dirty = new Set();
+document.addEventListener('input', e => {
+  const r = e.target.closest('[data-region]');
+  if (r) dirty.add(r.dataset.region);
+});
+function focusedIn(id) {
+  const el = document.querySelector(`[data-region="${id}"]`);
+  const a = document.activeElement;
+  return !!(el && a && el.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+}
+const busy = id => dirty.has(id) || focusedIn(id);
+const settled = id => dirty.delete(id);
+// When you do something deliberate -- save, cancel an order, mark a cook done --
+// whatever you'd half-typed elsewhere and left alone is fair game to refresh.
+// Only the box your cursor is actually sitting in stays put.
+const settleIdle = () => [...dirty].forEach(id => { if (!focusedIn(id)) dirty.delete(id); });
 
 /* ---------------------------------------------------------------- tabs */
 $('#tabs').addEventListener('click', e => {
@@ -281,7 +302,8 @@ function cookBlock(c) {
   </section>`;
 }
 
-function render() {
+function render(bg) {
+  if (bg && busy('cooks')) return;
   $('#cookList').innerHTML = DATA.cooks.length
     ? DATA.cooks.map(cookBlock).join('')
     : '<div class="card"><p class="muted">No cooks scheduled yet. Head to “Schedule a cook”.</p></div>';
@@ -373,12 +395,14 @@ $('#nButts').addEventListener('input', previewSupplies);
 const fmtQty = n => (Math.round(n * 100) / 100).toString();
 let SUP = { supplies: [], purchases: [], value_cents: 0 };
 
-async function loadSupplies() {
+async function loadSupplies(bg) {
+  if (bg && busy('supplies')) return;
   SUP = await api('/api/admin/supplies');
-  renderSupplies();
+  renderSupplies(bg);
 }
 
-function renderSupplies() {
+function renderSupplies(bg) {
+  if (bg && busy('supplies')) return;
   $('#supValue').textContent = SUP.value_cents ? money(SUP.value_cents) + ' sitting on the shelf' : '';
 
   const low = SUP.supplies.filter(s => s.low);
@@ -437,6 +461,7 @@ $('#saveSupplies').addEventListener('click', async () => {
       if (!(s.name || '').trim()) continue;
       await post('/api/admin/supplies', { ...s, sort_order: i });
     }
+    settled('supplies');
     await loadSupplies();
     $('#supMsg').textContent = 'Saved.';
     setTimeout(() => $('#supMsg').textContent = '', 2500);
@@ -544,7 +569,8 @@ function msgRow(m, kind) {
   </div>`;
 }
 
-async function renderMessages() {
+async function renderMessages(bg) {
+  if (bg && busy('msgs')) return;
   const d = await api('/api/admin/messages');
   $('#confirmList').innerHTML = d.confirmations.length
     ? d.confirmations.map(m => msgRow(m, 'confirm')).join('')
@@ -580,13 +606,15 @@ $('#saveTpl').addEventListener('click', async () => {
     msg_reminder: $('#set_msg_reminder').value,
     reminder_lead_days: $('#set_reminder_lead_days').value,
   });
+  settled('msgs');
   $('#tplMsg').textContent = 'Saved.';
   setTimeout(() => $('#tplMsg').textContent = '', 2000);
   renderMessages();
 });
 
 /* ------------------------------------------------------------- menu */
-async function renderMenu() {
+async function renderMenu(bg) {
+  if (bg && busy('menu')) return;
   const products = await api('/api/admin/products');
   $('#menuRows').innerHTML = products.map(p => `
     <div class="row" style="align-items:flex-end;border-bottom:1px solid var(--line);padding-bottom:6px">
@@ -649,7 +677,8 @@ const SETTING_FIELDS = [
   ['yield_lbs_per_butt', 'Pounds of pulled pork per butt', 'number'],
   ['hold_minutes', 'Minutes to hold an unpaid cart', 'number'],
 ];
-function renderSettings() {
+function renderSettings(bg) {
+  if (bg && busy('settings')) return;
   const s = DATA.settings;
   $('#settingsForm').innerHTML = '<div class="row">' + SETTING_FIELDS.map(([k, label, type]) => `
     <div class="field" style="${type === 'textarea' ? 'flex:1 1 100%' : ''}"><label for="set_${k}">${label}</label>
@@ -668,19 +697,21 @@ $('#saveSettings').addEventListener('click', async () => {
   const body = {};
   SETTING_FIELDS.forEach(([k]) => body[k] = $('#set_' + k).value);
   DATA.settings = await post('/api/admin/settings', body);
+  settled('settings');
   $('#setMsg').textContent = 'Saved.';
   setTimeout(() => $('#setMsg').textContent = '', 2000);
 });
 
 /* ------------------------------------------------------------- boot */
-async function load() {
+async function load(bg) {
+  if (!bg) settleIdle();
   DATA = await api('/api/admin/dashboard');
-  render(); renderSettings(); renderMenu(); renderMessages();
-  loadSupplies().catch(() => {});
+  render(bg); renderSettings(bg); renderMenu(bg); renderMessages(bg);
+  loadSupplies(bg).catch(() => {});
 }
 renderSlotRows();
 checkAuth();
-setInterval(() => { if (!$('#app').classList.contains('hide')) load(); }, 30000);
+setInterval(() => { if (!$('#app').classList.contains('hide')) load(true); }, 30000);
 </script>
 </body>
 </html>
