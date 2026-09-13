@@ -493,3 +493,27 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
 .picprev .pic button:hover{background:rgba(194,72,31,.92)}
 input[type=file]{font:inherit;font-size:14px;padding:8px 0}
 .shot .cap .by{display:block;font-style:normal;opacity:.82;font-size:11.5px;margin-top:2px}
+
+/* ---- what you're buying, on the order form ------------------------------ */
+.pgroup .gbanner{position:relative;height:132px;overflow:hidden;background:#efece6}
+.pgroup .gbanner img{width:100%;height:100%;object-fit:cover;display:block}
+.pgroup .gbanner::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(9,18,12,.88) 0%,rgba(9,18,12,.15) 55%,rgba(9,18,12,.05) 100%)}
+.pgroup .ghead.over{position:relative;margin-top:-44px;background:none;z-index:1;
+  text-shadow:0 1px 8px rgba(9,18,12,.85);padding-bottom:13px}
+.pgroup .ghead.over .small{opacity:.95}
+.pgroup.out .gbanner img{filter:grayscale(.8)}
+@media (max-width:520px){ .pgroup .gbanner{height:106px} }
+/* a drawn badge is a symbol, not a photo -- it wants room around it */
+.pgroup .ishot.drawn{object-fit:contain;background:var(--green-pale);padding:3px}
+
+/* ---- order rows on a phone ---------------------------------------------- */
+/* Side by side, the name gets crushed to one word per line and the quantity
+   box runs off the edge. Below this width the row stacks instead. */
+@media (max-width:560px){
+  .pgroup .item{display:block}
+  .pgroup .item > .row{margin-top:10px;justify-content:space-between;width:100%}
+  .pgroup .item .iwrap{gap:10px}
+  .pgroup .item .price{font-size:17px}
+  .pgroup .qty input{width:72px}
+}

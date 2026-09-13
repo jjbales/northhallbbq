@@ -303,6 +303,8 @@ function renderProducts() {
     let g = groups.find(x => x.protein_id === p.protein_id);
     if (!g) {
       g = { protein_id: p.protein_id, name: p.protein_name, art: p.art,
+            banner: p.photo && p.photo !== p.art ? p.photo : null,
+            bannerThumb: p.photo && p.photo !== p.art ? p.shot : null,
             line: c.proteins.find(x => x.protein_id === p.protein_id), items: [] };
       groups.push(g);
     }
@@ -311,18 +313,21 @@ function renderProducts() {
 
   $('#products').innerHTML = groups.map(g => `
     <div class="pgroup ${g.line && g.line.sold_out ? 'out' : ''}">
-      <div class="ghead">
-        <span class="gname">${g.art ? `<img src="${g.art}" alt="" class="gart">` : ''}${g.name}</span>
+      ${g.banner ? `<div class="gbanner"><img src="${esc(g.banner)}" alt="${esc(g.name)}" loading="lazy"></div>` : ''}
+      <div class="ghead${g.banner ? ' over' : ''}">
+        <span class="gname">${!g.banner && g.art ? `<img src="${esc(g.art)}" alt="" class="gart">` : ''}${esc(g.name)}</span>
         <span class="small">${g.line && g.line.sold_out ? 'Sold out'
           : `${g.line.whole_available} ${pieceWord(g.line, g.line.whole_available)} left`}</span>
       </div>
       ${g.items.map(p => `
         <div class="item">
           <div class="iwrap">
-            ${p.image_url ? `<img src="${p.image_url}" alt="" class="ishot" loading="lazy">` : ''}
+            ${p.shot && p.shot !== g.banner && p.shot !== g.bannerThumb
+              ? `<img src="${esc(p.shot)}" alt="${esc(p.name)}"
+                  class="ishot${/\.svg$/i.test(p.shot) ? ' drawn' : ''}" loading="lazy">` : ''}
             <div>
-              <div><strong>${p.name}</strong></div>
-              <div class="small muted">${p.description || ''}</div>
+              <div><strong>${esc(p.name)}</strong></div>
+              <div class="small muted">${esc(p.description || '')}</div>
             </div>
           </div>
           <div class="row" style="align-items:center;gap:14px;flex-wrap:nowrap">

@@ -86,12 +86,24 @@ app.get('/api/config', (req, res) => {
   });
 });
 
+// Every item carries a picture of what it is. Best available wins: a photo set
+// on the item itself, else one from the album tagged with that protein, else
+// the drawn badge. So dropping photos in and tagging them is all it takes for
+// the order form to show food.
+const BEST_PHOTO = `
+  SELECT ph.file FROM photos ph
+   WHERE ph.active = 1 AND ph.protein_id = pr.protein_id
+   ORDER BY ph.featured DESC, ph.source = 'owner' DESC, ph.sort_order, ph.id LIMIT 1`;
+const BEST_THUMB = BEST_PHOTO.replace('ph.file', 'ph.thumb');
+
 app.get('/api/products', (req, res) => {
   res.json(
     db.prepare(
       `SELECT pr.slug, pr.name, pr.description, pr.unit, pr.price_cents, pr.piece_equiv,
               pr.protein_id, pr.image_url, x.slug AS protein_slug, x.name AS protein_name,
-              x.piece, x.pieces, x.yield_lbs, x.art
+              x.piece, x.pieces, x.yield_lbs, x.art,
+              COALESCE(NULLIF(pr.image_url,''), (${BEST_PHOTO}))            AS photo,
+              COALESCE(NULLIF(pr.image_url,''), (${BEST_THUMB}), x.art)     AS shot
          FROM products pr JOIN proteins x ON x.id = pr.protein_id
         WHERE pr.active = 1 AND x.active = 1 AND pr.price_cents > 0
         ORDER BY x.sort_order, x.id, pr.sort_order, pr.id`

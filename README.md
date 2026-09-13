@@ -185,6 +185,23 @@ them. Each photo wants two files — `name.jpg` at about 1600px and
 `name-thumb.jpg` at about 640px — and the album uses the thumb in the grid and
 the big one in the lightbox, so a phone isn't downloading 4 MB per picture.
 
+**Photos show up on the order form.** Each protein group on the shop page gets
+a banner of the real thing, so a customer sees what they're buying before they
+pick a number. The picture is chosen for you: whatever photo is set on the item
+itself, else the best photo in the album tagged with that protein (featured
+first, yours before a customer's), else the drawn badge. So tagging a photo
+"of what: Brisket" is all it takes.
+
+To give one item its own picture — a different shot for pulled pork than for a
+whole butt — set the photo field on Menu & prices. That one then shows as a
+thumbnail on its row as well.
+
+An empty album fills itself on first start: anything already sitting in
+`public/photos` gets picked up and tagged by filename (anything with "brisket"
+in the name lands on brisket, "butt" or "pork" on pork, "chicken" or "bird" on
+chicken). It runs once, on an empty album, and never touches a caption or tag
+you've set.
+
 Drop files in that folder and hit **Look for new photos** on the Photos &
 comments tab. Caption them there; the caption is what a customer reads and what
 a screen reader says out loud. "On the shop page" puts a photo in the strip
