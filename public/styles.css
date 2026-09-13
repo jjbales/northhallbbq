@@ -397,3 +397,12 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
 .pgroup .item:last-child{border-bottom:0}
 .pgroup.out{opacity:.55}
 .pgroup.out .ghead{background:#6d6a65}
+
+/* ---- the drawn badge on each group, and your own photo on an item ------ */
+.pgroup .ghead .gname{display:inline-flex;align-items:center;gap:9px}
+.pgroup .gart{width:30px;height:30px;display:block;border-radius:50%;
+  background:rgba(255,255,255,.12);flex:0 0 auto}
+.pgroup .item .iwrap{display:flex;align-items:center;gap:12px;min-width:0}
+.pgroup .ishot{width:56px;height:56px;flex:0 0 auto;object-fit:cover;border-radius:9px;
+  border:1px solid var(--line);background:#efece6}
+@media (max-width:520px){ .pgroup .ishot{width:46px;height:46px} }

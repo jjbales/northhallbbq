@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Smoked brisket">
+  <defs>
+    <linearGradient id="brBark" x1=".15" y1="0" x2=".85" y2="1">
+      <stop offset="0" stop-color="#4e2311"/><stop offset=".55" stop-color="#301509"/>
+      <stop offset="1" stop-color="#1b0c04"/>
+    </linearGradient>
+    <linearGradient id="brCut" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2e7d2"/><stop offset=".16" stop-color="#f2e7d2"/>
+      <stop offset=".2" stop-color="#e8822a"/><stop offset=".42" stop-color="#c2481f"/>
+      <stop offset="1" stop-color="#8d2f14"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="54" fill="#2d5035"/>
+  <circle cx="60" cy="60" r="45" fill="#24402a"/>
+  <g stroke="#150a04" stroke-width="2.4" stroke-linejoin="round">
+    <!-- the packer, bark side up, seen at an angle -->
+    <path d="M28 34c22-5 46-4 62 2 6 2 8 7 5 11-4 5-14 8-28 9-16 1-32-1-40-5-5-3-4-15 1-17z" fill="url(#brBark)"/>
+    <!-- fat cap catching the light along the top edge -->
+    <path d="M28 34c22-5 46-4 62 2 3 1 5 3 5 5-6-4-18-7-34-8-13 0-24 1-33 3 0-1 0-2 0-2z"
+          fill="#f2e7d2" opacity=".7" stroke="none"/>
+    <!-- two slices cut off the end, laid down flat -->
+    <path d="M24 62c20-4 42-3 56 2 5 2 7 6 4 9-4 4-13 6-25 7-14 1-28-1-35-5-4-2-4-12 0-13z" fill="url(#brBark)"/>
+    <path d="M24 62c20-4 42-3 56 2l-3 5c-13-4-33-5-50-2-4 0-4-4-3-5z" fill="url(#brCut)" stroke="none"/>
+    <path d="M22 86c18-3 38-2 50 2 5 2 6 6 3 8-4 3-12 5-22 5-13 1-25-1-31-4-4-2-4-10 0-11z" fill="url(#brBark)"/>
+    <path d="M22 86c18-3 38-2 50 2l-3 5c-11-3-29-4-45-2-3 0-3-4-2-5z" fill="url(#brCut)" stroke="none"/>
+  </g>
+  <!-- bark texture -->
+  <g fill="#f7c14a" opacity=".15">
+    <ellipse cx="52" cy="44" rx="13" ry="3.2" transform="rotate(-5 52 44)"/>
+    <ellipse cx="78" cy="45" rx="8" ry="2.4" transform="rotate(-8 78 45)"/>
+    <ellipse cx="50" cy="72" rx="11" ry="2.8"/>
+    <ellipse cx="48" cy="95" rx="10" ry="2.4"/>
+  </g>
+</svg>

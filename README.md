@@ -131,6 +131,55 @@ editable under "Message wording".
 - **Settings** — business name, pickup address, payment mode, yield, hold time.
   CSV export of every order lives at the bottom.
 
+## Cold storage
+
+Meat gets bought in bulk and held, so each protein carries a freezer count the
+same way wrap and pans do — on hand, a running average of what a piece cost,
+and an average raw weight.
+
+**Log a meat run** in pieces plus what you paid. Pounds are optional but worth
+putting in: 8 butts, 62 lbs, $119.66 gives you $14.96 a butt *and* $1.93 a
+pound, which is how you actually shop. Both averages are weighted, so the next
+run at a different price moves them honestly rather than just overwriting.
+
+Three numbers per protein tell you where you stand:
+
+- **In the freezer** — what you're holding.
+- **On the books** — what upcoming cooks have already claimed. A butt can only
+  be sold once, so the freezer count on its own overstates what's free.
+- **Free** — the difference. If it goes negative you've booked more than you're
+  holding; the tab says so, and the cook form warns you while you're typing.
+
+Booking past your stock is flagged, never blocked — sometimes you schedule the
+cook and buy the meat Thursday. **Marking a cook done** is what takes the pieces
+out, so nothing leaves the freezer before it hits the pit. Reopening puts it
+back. Like the pantry, stock can go negative: that means you cooked meat you
+hadn't logged buying, and logging the run squares it up.
+
+Leave the cost field blank when scheduling and the cook books at whatever the
+freezer says a piece cost. Type a number to override it for that cook.
+
+## Arranging rows
+
+The menu, the pantry and cold storage all have ↑↓ arrows on each row. They save
+as soon as you click. Menu items move within their own protein group, because
+the shop groups the menu that way — letting one jump the fence would look like
+it worked and then snap back. Reorder the proteins themselves in cold storage
+and the shop's groups follow.
+
+Saving a price or a count never moves a row; only the arrows do.
+
+## Pictures
+
+Each protein ships with a drawn badge — original SVG in the site's colors,
+which is why they match the logo and cost nothing to load. They're in
+`public/img`, one per protein slug.
+
+To use your own photo for an item, drop a JPG in `public/img` and point the
+photo field on Menu & prices at it (`/img/my-brisket.jpg`). It shows as a
+thumbnail next to that item and takes over from the badge. Your own food will
+outsell a drawing every time.
+
 ## Supplies
 
 Wrap, pans, rub and fuel get bought in bulk and drawn down a cook at a time, so

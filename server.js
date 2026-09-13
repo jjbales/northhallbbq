@@ -9,6 +9,7 @@ const { availability, priceCart, releaseExpiredHolds, ordersCloseAt,
         committedByProtein, activeProteins } = require('./lib/inventory');
 const { projectedUse, piecesForCook, recordPurchase, consumeForCook, releaseForCook,
         suppliesForCook, shelf, setRates, costByProtein } = require('./lib/supplies');
+const cold = require('./lib/coldstorage');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -59,17 +60,19 @@ app.get('/api/products', (req, res) => {
   res.json(
     db.prepare(
       `SELECT pr.slug, pr.name, pr.description, pr.unit, pr.price_cents, pr.piece_equiv,
-              pr.protein_id, x.slug AS protein_slug, x.name AS protein_name,
-              x.piece, x.pieces, x.yield_lbs
+              pr.protein_id, pr.image_url, x.slug AS protein_slug, x.name AS protein_name,
+              x.piece, x.pieces, x.yield_lbs, x.art
          FROM products pr JOIN proteins x ON x.id = pr.protein_id
         WHERE pr.active = 1 AND x.active = 1 AND pr.price_cents > 0
-        ORDER BY x.sort_order, pr.sort_order, pr.id`
+        ORDER BY x.sort_order, x.id, pr.sort_order, pr.id`
     ).all()
   );
 });
 
-// What's on the pit, for the admin pickers.
-app.get('/api/admin/proteins', requireAdmin, (req, res) => res.json(activeProteins()));
+// What's on the pit, with what's in the freezer behind it -- the cook form
+// uses both, so it can pre-fill the cost and warn you when you're short.
+app.get('/api/admin/proteins', requireAdmin, (req, res) =>
+  res.json(cold.freezerWithCommitments()));
 
 // Every open cook, soonest first, with live availability.
 app.get('/api/cooks', (req, res) => {
@@ -341,15 +344,16 @@ app.post('/api/admin/settings', requireAdmin, (req, res) => {
 });
 
 const productRows = () => db.prepare(
-  `SELECT pr.*, x.slug AS protein_slug, x.name AS protein_name, x.piece, x.pieces, x.yield_lbs
+  `SELECT pr.*, x.slug AS protein_slug, x.name AS protein_name, x.piece, x.pieces,
+          x.yield_lbs, x.art
      FROM products pr LEFT JOIN proteins x ON x.id = pr.protein_id
-    ORDER BY x.sort_order, pr.sort_order, pr.id`
+    ORDER BY x.sort_order, x.id, pr.sort_order, pr.id`
 ).all();
 app.get('/api/admin/products', requireAdmin, (req, res) => res.json(productRows()));
 app.post('/api/admin/products', requireAdmin, (req, res) => {
   try {
     const { id, slug, name, description, unit, price_cents, piece_equiv,
-            protein_id, active, sort_order } = req.body || {};
+            protein_id, active, sort_order, image_url } = req.body || {};
     if (!String(name || '').trim()) return res.status(400).json({ error: 'Give it a name.' });
     const pid = Number(protein_id);
     if (!db.prepare('SELECT 1 FROM proteins WHERE id = ?').get(pid)) {
@@ -362,10 +366,18 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
     const live = active && price > 0 ? 1 : 0;
 
     if (id) {
+      // leaving sort_order out means "don't move it" -- saving a price should
+      // never shuffle the menu
+      const cur = db.prepare('SELECT sort_order FROM products WHERE id = ?').get(Number(id));
+      const order = Number.isFinite(Number(sort_order)) && sort_order !== null && sort_order !== ''
+        ? Number(sort_order) : (cur ? cur.sort_order : 0);
+      const img = image_url === undefined ? undefined : String(image_url).trim();
       db.prepare(
         `UPDATE products SET name=?, description=?, unit=?, price_cents=?,
-                piece_equiv=?, butt_equiv=?, protein_id=?, active=?, sort_order=? WHERE id=?`
-      ).run(name, description || '', unit, price, eq, eq, pid, live, sort_order || 0, id);
+                piece_equiv=?, butt_equiv=?, protein_id=?, active=?, sort_order=?,
+                image_url=COALESCE(?, image_url) WHERE id=?`
+      ).run(name, description || '', unit, price, eq, eq, pid, live, order,
+            img === undefined ? null : img, id);
     } else {
       db.prepare(
         `INSERT INTO products (slug, name, description, unit, price_cents, piece_equiv,
@@ -374,6 +386,78 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
       ).run(slug, name, description || '', unit, price, eq, eq, pid, live, sort_order || 0);
     }
     res.json(productRows());
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// -------------------------------------------------------------- cold storage
+// The freezer. Meat gets bought in bulk and held, so it carries a count the
+// same way wrap and pans do.
+app.get('/api/admin/coldstorage', requireAdmin, (req, res) => {
+  const rows = cold.freezerWithCommitments();
+  const purchases = db.prepare(
+    `SELECT pp.*, p.name, p.piece, p.pieces FROM protein_purchases pp
+       LEFT JOIN proteins p ON p.id = pp.protein_id
+      ORDER BY pp.id DESC LIMIT 25`
+  ).all();
+  res.json({ proteins: rows, purchases, value_cents: rows.reduce((a, b) => a + b.value_cents, 0) });
+});
+
+// Logging a meat run. Pieces and pounds both -- you shop by the pound and
+// cook by the piece, and the averages should follow what you actually paid.
+app.post('/api/admin/coldstorage/:id/purchase', requireAdmin, (req, res) => {
+  try {
+    const { qty, lbs, total_cents, note } = req.body || {};
+    const q = Number(qty);
+    if (!Number.isFinite(q) || q <= 0) return res.status(400).json({ error: 'How many did you buy?' });
+    const w = Number(lbs) || 0;
+    if (w < 0) return res.status(400).json({ error: 'Weight can\'t be negative.' });
+    const t = Number(total_cents);
+    if (!Number.isFinite(t) || t < 0) return res.status(400).json({ error: 'What did it cost?' });
+    res.json(cold.recordPurchase(Number(req.params.id), q, w, t, note));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Correcting a count, a yield, or a low-stock line.
+app.post('/api/admin/proteins', requireAdmin, (req, res) => {
+  try {
+    const { id, name, piece, pieces, yield_lbs, on_hand, unit_cost_cents,
+            avg_lbs, low_at, active, sort_order } = req.body || {};
+    const p = db.prepare('SELECT * FROM proteins WHERE id = ?').get(Number(id));
+    if (!p) return res.status(404).json({ error: 'No such protein.' });
+    const num = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+    db.prepare(
+      `UPDATE proteins SET name=?, piece=?, pieces=?, yield_lbs=?, on_hand=?,
+              unit_cost_cents=?, avg_lbs=?, low_at=?, active=?, sort_order=? WHERE id=?`
+    ).run(
+      String(name || p.name).trim(), String(piece || p.piece).trim(), String(pieces || p.pieces).trim(),
+      num(yield_lbs, p.yield_lbs), num(on_hand, p.on_hand), num(unit_cost_cents, p.unit_cost_cents),
+      num(avg_lbs, p.avg_lbs), num(low_at, p.low_at),
+      active === 0 || active === false ? 0 : 1, num(sort_order, p.sort_order), p.id
+    );
+    res.json(cold.freezerWithCommitments());
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// --------------------------------------------------------------- row order
+// Move a row up or down. Renumbers the whole list so the order sticks even if
+// it started out with everything at zero.
+const ORDERABLE = { products: 'products', supplies: 'supplies', proteins: 'proteins' };
+app.post('/api/admin/reorder/:table', requireAdmin, (req, res) => {
+  try {
+    const table = ORDERABLE[req.params.table];
+    if (!table) return res.status(400).json({ error: 'Nothing to reorder there.' });
+    const ids = (req.body && req.body.ids) || [];
+    if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'Send the new order.' });
+
+    const up = db.prepare(`UPDATE ${table} SET sort_order = ? WHERE id = ?`);
+    db.transaction(() => ids.forEach((id, i) => up.run(i + 1, Number(id))))();
+    res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
@@ -407,12 +491,15 @@ app.post('/api/admin/supplies', requireAdmin, (req, res) => {
     if (supplyId) {
       // on_hand and unit cost are only set here when you're correcting a count;
       // normally they move through purchases and cooks
+      const cur = db.prepare('SELECT sort_order FROM supplies WHERE id = ?').get(supplyId);
+      const order = sort_order === undefined || sort_order === null || sort_order === ''
+        ? (cur ? cur.sort_order : 0) : num(sort_order);
       db.prepare(
         `UPDATE supplies SET name=?, unit=?, per_butt=?, per_cook=?, low_at=?,
                 on_hand=?, unit_cost_cents=?, active=?, sort_order=? WHERE id=?`
       ).run(String(name).trim(), String(unit || 'unit').trim(), perButt, num(per_cook),
             num(low_at), num(on_hand), num(unit_cost_cents),
-            active === 0 || active === false ? 0 : 1, num(sort_order), supplyId);
+            active === 0 || active === false ? 0 : 1, order, supplyId);
     } else {
       const info = db.prepare(
         `INSERT INTO supplies (name, unit, on_hand, unit_cost_cents, per_butt, per_cook, low_at, active, sort_order)
@@ -585,8 +672,8 @@ app.post('/api/admin/cooks', requireAdmin, (req, res) => {
     // --- supplies: stock comes out of inventory when the cook is marked done -
     // Before that it's only an estimate, so nothing is deducted and you're free
     // to change what's going on the pit without the wrap and pans going out of step.
-    if (nextStatus === 'done') consumeForCook(cookId);
-    else releaseForCook(cookId);
+    if (nextStatus === 'done') { consumeForCook(cookId); cold.consumeForCook(cookId); }
+    else { releaseForCook(cookId); cold.releaseForCook(cookId); }
 
     res.json(availability(cookId));
   } catch (e) {
@@ -612,8 +699,8 @@ app.post('/api/admin/cooks/:id/status', requireAdmin, (req, res) => {
     if (!cook) return res.status(404).json({ error: 'No such cook date.' });
 
     db.prepare('UPDATE cook_dates SET status = ? WHERE id = ?').run(status, cookId);
-    if (status === 'done') consumeForCook(cookId);
-    else releaseForCook(cookId);
+    if (status === 'done') { consumeForCook(cookId); cold.consumeForCook(cookId); }
+    else { releaseForCook(cookId); cold.releaseForCook(cookId); }
     res.json({ ok: true, status });
   } catch (e) {
     res.status(400).json({ error: e.message });

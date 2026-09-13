@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Spatchcocked chicken">
+  <defs>
+    <radialGradient id="chSkin" cx="44%" cy="30%" r="72%">
+      <stop offset="0" stop-color="#ecb04b"/><stop offset=".5" stop-color="#cc7a1f"/>
+      <stop offset="1" stop-color="#8a470d"/>
+    </radialGradient>
+    <linearGradient id="chLeg" x1=".2" y1="0" x2=".8" y2="1">
+      <stop offset="0" stop-color="#dd922f"/><stop offset="1" stop-color="#8a470d"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="54" fill="#2d5035"/>
+  <circle cx="60" cy="60" r="45" fill="#24402a"/>
+  <g stroke="#150a04" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round">
+    <!-- wings, pinned out flat at the shoulders -->
+    <path d="M38 38 22 30c-4-2-7 1-6 5l4 12c1 4 5 5 8 3l10-6z" fill="url(#chLeg)"/>
+    <path d="M82 38 98 30c4-2 7 1 6 5l-4 12c-1 4-5 5-8 3l-10-6z" fill="url(#chLeg)"/>
+
+    <!-- the bird pressed flat: broad across the breast, narrowing down -->
+    <path d="M60 20c17 0 27 10 27 24 0 12-4 22-9 29-4 5-10 8-18 8s-14-3-18-8c-5-7-9-17-9-29 0-14 10-24 27-24z"
+          fill="url(#chSkin)"/>
+    <!-- the backbone's out; that's the split that makes it spatchcocked -->
+    <path d="M60 22v57" stroke-width="2" opacity=".5" fill="none"/>
+
+    <!-- legs: thigh out and down, drumstick turning under. the frog-leg pose -->
+    <path d="M44 68c-9 2-16 9-15 17 1 7 8 10 14 7 5-3 8-9 8-16z" fill="url(#chLeg)"/>
+    <path d="M32 88c-2 6 1 11 6 12s10-3 11-9" fill="url(#chLeg)"/>
+    <path d="M76 68c9 2 16 9 15 17-1 7-8 10-14 7-5-3-8-9-8-16z" fill="url(#chLeg)"/>
+    <path d="M88 88c2 6-1 11-6 12s-10-3-11-9" fill="url(#chLeg)"/>
+  </g>
+  <!-- grate marks, char and rub -->
+  <g fill="#5a2a12" opacity=".42">
+    <ellipse cx="49" cy="38" rx="8" ry="3.2" transform="rotate(-12 49 38)"/>
+    <ellipse cx="72" cy="42" rx="6.5" ry="2.8" transform="rotate(10 72 42)"/>
+    <ellipse cx="50" cy="56" rx="7" ry="2.8" transform="rotate(5 50 56)"/>
+    <ellipse cx="71" cy="58" rx="6" ry="2.5" transform="rotate(-8 71 58)"/>
+    <ellipse cx="60" cy="70" rx="7.5" ry="2.6"/>
+  </g>
+  <g fill="#f7c14a" opacity=".32">
+    <ellipse cx="56" cy="30" rx="11" ry="3.4"/>
+    <ellipse cx="42" cy="50" rx="5" ry="2.2" transform="rotate(-38 42 50)"/>
+    <ellipse cx="78" cy="52" rx="4.5" ry="2" transform="rotate(34 78 52)"/>
+  </g>
+</svg>

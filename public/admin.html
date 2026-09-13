@@ -48,7 +48,7 @@
       <button data-tab="cooks" aria-selected="true">Cooks &amp; orders</button>
       <button data-tab="new" aria-selected="false">Schedule a cook</button>
       <button data-tab="msgs" aria-selected="false">Confirmations &amp; reminders</button>
-      <button data-tab="supplies" aria-selected="false">Supplies</button>
+      <button data-tab="supplies" aria-selected="false">Inventory</button>
       <button data-tab="menu" aria-selected="false">Menu &amp; prices</button>
       <button data-tab="settings" aria-selected="false">Settings</button>
     </div>
@@ -102,7 +102,43 @@
     <section id="tab-supplies" class="hide">
       <div class="card">
         <div class="row" style="justify-content:space-between;align-items:baseline">
-          <h2 style="margin:0">What's on the shelf</h2>
+          <h2 style="margin:0">Cold storage</h2>
+          <span class="small muted" id="coldValue"></span>
+        </div>
+        <p class="small muted">Meat you've bought and are holding. A cook takes its
+        pieces out when you mark it cooked, same as the pantry.</p>
+        <div id="coldLow"></div>
+        <div style="overflow-x:auto"><div id="coldTable" data-region="cold"></div></div>
+        <button class="btn sm" id="saveCold" style="margin-top:10px">Save cold storage</button>
+        <span class="small muted" id="coldMsg" style="margin-left:8px"></span>
+      </div>
+
+      <div class="card">
+        <h2>Log a meat run</h2>
+        <p class="small muted" style="margin-top:-6px">Pieces and what you paid. Pounds are
+        optional but worth putting in — it's how you shop, and it gives you a price per pound.</p>
+        <div class="row" style="align-items:flex-end">
+          <div class="field" style="flex:1 1 150px"><label for="mBuyWhat">What</label>
+            <select id="mBuyWhat"></select></div>
+          <div class="field" style="flex:0 0 120px"><label for="mBuyQty">How many</label>
+            <input id="mBuyQty" type="number" min="0" step="1"></div>
+          <div class="field" style="flex:0 0 130px"><label for="mBuyLbs">Total pounds</label>
+            <input id="mBuyLbs" type="number" min="0" step="0.01" placeholder="optional"></div>
+          <div class="field" style="flex:0 0 140px"><label for="mBuyCost">What you paid ($)</label>
+            <input id="mBuyCost" type="number" min="0" step="0.01"></div>
+          <div class="field" style="flex:1 1 150px"><label for="mBuyNote">Where from (optional)</label>
+            <input id="mBuyNote" type="text" placeholder="Sam's, the butcher"></div>
+          <div class="field" style="flex:0 0 auto"><button class="btn sm" id="logMeat" type="button">Log it</button></div>
+        </div>
+        <div id="mBuyMsg"></div>
+        <div class="small muted" id="mBuyMath" style="margin-top:6px"></div>
+        <h3 style="font-size:15px;margin-top:20px">Recent meat runs</h3>
+        <div id="meatList" class="small muted"></div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:baseline">
+          <h2 style="margin:0">The pantry</h2>
           <span class="small muted" id="supValue"></span>
         </div>
         <p class="small muted">Buy in bulk, log the receipt, and every cook prices itself off what you
@@ -363,12 +399,13 @@ function render(bg) {
 function editCook(id) {
   const c = DATA.cooks.find(x => x.id === id);
   $('#nDate').value = c.cook_date;
-  proteinRows = {};
+  proteinRows = {}; editingClaim = {};
   for (const p of c.availability.proteins) {
     proteinRows[p.protein_id] = {
       qty: p.total,
       cost: p.unit_cost_cents ? (p.unit_cost_cents / 100).toFixed(2) : '',
     };
+    if (c.status !== 'done') editingClaim[p.protein_id] = p.total;
   }
   renderProteinRows();
   $('#nOther').value = (c.other_cost_cents / 100).toFixed(2);
@@ -383,25 +420,176 @@ function editCook(id) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+
+/* ------------------------------------------------- moving rows up and down */
+// Arrows rather than drag: they work the same on a phone in the driveway as
+// they do at a desk, and they can't half-drop a row.
+function arrows(kind, i, n, can) {
+  const ok = (d) => {
+    const j = i + d;
+    if (j < 0 || j >= n) return false;
+    return can ? can(i, j) : true;
+  };
+  return `<span style="white-space:nowrap">
+    <button class="btn ghost sm" type="button" data-move="${kind}" data-i="${i}" data-d="-1"
+      ${ok(-1) ? '' : 'disabled'} title="Move up" aria-label="Move up">&uarr;</button>
+    <button class="btn ghost sm" type="button" data-move="${kind}" data-i="${i}" data-d="1"
+      ${ok(1) ? '' : 'disabled'} title="Move down" aria-label="Move down">&darr;</button>
+  </span>`;
+}
+// list: the array to reorder in place. after: what to do once it's saved.
+function wireArrows(root, kind, list, table, after) {
+  root.querySelectorAll(`[data-move="${kind}"]`).forEach(b =>
+    b.addEventListener('click', async () => {
+      const i = Number(b.dataset.i), j = i + Number(b.dataset.d);
+      if (j < 0 || j >= list.length) return;
+      [list[i], list[j]] = [list[j], list[i]];
+      after();
+      const ids = list.map(x => x.id).filter(Boolean);
+      if (ids.length) { try { await post('/api/admin/reorder/' + table, { ids }); } catch (e) {} }
+    }));
+}
+
+/* --------------------------------------------------------- cold storage */
+let COLD = { proteins: [], purchases: [], value_cents: 0 };
+
+async function loadCold(bg) {
+  if (bg && busy('cold')) return;
+  COLD = await api('/api/admin/coldstorage');
+  PROTEINS = COLD.proteins;
+  renderCold();
+}
+
+function renderCold() {
+  $('#coldValue').textContent = COLD.value_cents ? money(COLD.value_cents) + ' in the freezer' : '';
+  const low = COLD.proteins.filter(p => p.low);
+  $('#coldLow').innerHTML = low.length
+    ? `<div class="notice err"><strong>Getting low:</strong> ${low.map(p => `${p.name} (${fmtQty(p.on_hand)} ${p.pieces} left)`).join(', ')}</div>`
+    : '';
+  // anything already promised to a cook that hasn't happened yet
+  const over = COLD.proteins.filter(p => p.uncommitted < 0);
+  if (over.length) {
+    $('#coldLow').innerHTML += `<div class="notice err"><strong>Booked past what you're holding:</strong>
+      ${over.map(p => `${p.name} — ${fmtQty(p.committed)} on the books, ${fmtQty(p.on_hand)} in the freezer`).join('; ')}.
+      Log the run or it'll go negative when you mark the cook done.</div>`;
+  }
+
+  $('#coldTable').innerHTML = `<table>
+    <tr><th></th><th>What</th><th>One is a</th><th>In the freezer</th><th>On the books</th>
+      <th>Free</th><th>Cost each</th><th>Avg lbs</th><th>Per lb</th><th>Cooked yield</th><th>Low at</th></tr>
+    ${COLD.proteins.map((p, i) => `<tr>
+      <td>${arrows('cold', i, COLD.proteins.length)}</td>
+      <td><input type="text" style="width:92px" value="${(p.name || '').replace(/"/g, '&quot;')}" data-cx="${i}" data-f="name"></td>
+      <td><input type="text" style="width:82px" value="${(p.piece || '').replace(/"/g, '&quot;')}" data-cx="${i}" data-f="piece"></td>
+      <td><input type="number" step="0.01" style="width:88px" value="${p.on_hand}" data-cx="${i}" data-f="on_hand"></td>
+      <td class="small muted">${fmtQty(p.committed)}</td>
+      <td class="small ${p.uncommitted < 0 ? '' : 'muted'}"
+        ${p.uncommitted < 0 ? 'style="color:var(--warn);font-weight:600"' : ''}>${fmtQty(p.uncommitted)}</td>
+      <td><input type="number" step="0.01" min="0" style="width:88px" value="${+(p.unit_cost_cents / 100).toFixed(4)}" data-cx="${i}" data-f="cost"></td>
+      <td><input type="number" step="0.01" min="0" style="width:76px" value="${+Number(p.avg_lbs).toFixed(2)}" data-cx="${i}" data-f="avg_lbs"></td>
+      <td class="small muted">${p.lb_cost_cents ? money(p.lb_cost_cents) : '—'}</td>
+      <td><input type="number" step="0.1" min="0" style="width:76px" value="${p.yield_lbs}" data-cx="${i}" data-f="yield_lbs"></td>
+      <td><input type="number" step="0.5" min="0" style="width:76px" value="${p.low_at}" data-cx="${i}" data-f="low_at"></td>
+    </tr>`).join('')}
+  </table>
+  <p class="small muted" style="margin-top:6px">"On the books" is what upcoming cooks have already
+  claimed. "Cooked yield" is finished pounds off one piece — it's what the by-the-pound math runs on.
+  Leave it at 0 for anything you only sell whole.</p>`;
+
+  $('#coldTable').querySelectorAll('[data-cx]').forEach(el =>
+    el.addEventListener('input', () => {
+      const p = COLD.proteins[el.dataset.cx], f = el.dataset.f;
+      if (f === 'name') p.name = el.value;
+      else if (f === 'piece') { p.piece = el.value; p.pieces = el.value.trim() ? el.value.trim() + 's' : p.pieces; }
+      else if (f === 'cost') p.unit_cost_cents = Number(el.value || 0) * 100;
+      else p[f] = Number(el.value);
+    }));
+  wireArrows($('#coldTable'), 'cold', COLD.proteins, 'proteins', renderCold);
+
+  $('#mBuyWhat').innerHTML = COLD.proteins
+    .map(p => `<option value="${p.id}">${p.name} (${p.pieces})</option>`).join('');
+
+  $('#meatList').innerHTML = COLD.purchases.length
+    ? COLD.purchases.map(p => {
+        const each = p.qty > 0 ? p.total_cents / p.qty : 0;
+        const perLb = p.lbs > 0 ? p.total_cents / p.lbs : 0;
+        return `<div>${p.purchased_at.slice(0, 10)} — ${fmtQty(p.qty)} ${p.pieces || ''}
+          ${p.lbs ? `(${fmtQty(p.lbs)} lb) ` : ''}for <strong>${money(p.total_cents)}</strong>
+          · ${money(each)} each${perLb ? ` · ${money(perLb)}/lb` : ''}${p.note ? ' · ' + p.note : ''}</div>`;
+      }).join('')
+    : '<div>No meat runs logged yet.</div>';
+}
+
+// Live arithmetic while you type a receipt, so a fat-fingered total is obvious.
+function meatMath() {
+  const q = Number($('#mBuyQty').value) || 0;
+  const lbs = Number($('#mBuyLbs').value) || 0;
+  const c = cents($('#mBuyCost').value);
+  if (!q || !c) { $('#mBuyMath').textContent = ''; return; }
+  const bits = [`${money(c / q)} each`];
+  if (lbs > 0) bits.push(`${money(c / lbs)} a pound`, `${(lbs / q).toFixed(2)} lb average`);
+  $('#mBuyMath').textContent = 'That works out to ' + bits.join(' · ') + '.';
+}
+['#mBuyQty', '#mBuyLbs', '#mBuyCost'].forEach(s => $(s).addEventListener('input', meatMath));
+
+$('#saveCold').addEventListener('click', async () => {
+  try {
+    for (const [i, p] of COLD.proteins.entries()) {
+      await post('/api/admin/proteins', { ...p, sort_order: i + 1 });
+    }
+    settled('cold');
+    await loadCold();
+    $('#coldMsg').textContent = 'Saved.';
+    setTimeout(() => $('#coldMsg').textContent = '', 2500);
+    await load();
+  } catch (e) {
+    $('#coldMsg').innerHTML = `<span style="color:var(--warn)">${e.message}</span>`;
+  }
+});
+
+$('#logMeat').addEventListener('click', async () => {
+  try {
+    await post(`/api/admin/coldstorage/${$('#mBuyWhat').value}/purchase`, {
+      qty: Number($('#mBuyQty').value),
+      lbs: Number($('#mBuyLbs').value) || 0,
+      total_cents: cents($('#mBuyCost').value),
+      note: $('#mBuyNote').value,
+    });
+    $('#mBuyQty').value = ''; $('#mBuyLbs').value = ''; $('#mBuyCost').value = ''; $('#mBuyNote').value = '';
+    $('#mBuyMath').textContent = '';
+    $('#mBuyMsg').innerHTML = '<div class="notice ok">Logged.</div>';
+    setTimeout(() => $('#mBuyMsg').innerHTML = '', 2500);
+    await loadCold();
+    renderProteinRows();
+    await load();
+  } catch (e) {
+    $('#mBuyMsg').innerHTML = `<div class="notice err">${e.message}</div>`;
+  }
+});
+
 /* -------------------------------------------------------- new cook form */
 let editingId = null;
 let PROTEINS = [];
 let proteinRows = {};      // protein_id -> { qty, cost }
+let editingClaim = {};     // what the cook being edited already has on the books
 
 function renderProteinRows() {
   $('#proteinRows').innerHTML = PROTEINS.map(p => {
     const r = proteinRows[p.id] || { qty: '', cost: '' };
+    const free = p.uncommitted === undefined ? null : p.uncommitted;
     return `<div class="row" style="align-items:flex-end">
       <div class="field" style="flex:0 0 130px"><label>${p.name}</label>
         <input type="number" min="0" step="1" placeholder="0" value="${r.qty}"
                data-pr="${p.id}" data-f="qty" aria-label="How many ${p.pieces}"></div>
-      <div class="field" style="flex:0 0 60px;padding-bottom:9px" class="small muted">
+      <div class="field" style="flex:0 0 66px;padding-bottom:11px">
         <span class="small muted">${p.pieces}</span></div>
       <div class="field" style="flex:0 0 170px"><label>What you paid each ($)</label>
-        <input type="number" min="0" step="0.01" placeholder="0.00" value="${r.cost}"
-               data-pr="${p.id}" data-f="cost"></div>
-      <div class="field" style="flex:1 1 120px;padding-bottom:11px">
-        <span class="small muted" data-prtotal="${p.id}"></span></div>
+        <input type="number" min="0" step="0.01" placeholder="${p.unit_cost_cents ? (p.unit_cost_cents / 100).toFixed(2) : '0.00'}"
+               value="${r.cost}" data-pr="${p.id}" data-f="cost"></div>
+      <div class="field" style="flex:1 1 200px;padding-bottom:11px">
+        <span class="small muted" data-prfree="${p.id}">${free === null ? ''
+          : `${fmtQty(free)} free in the freezer${p.unit_cost_cents ? ` at ${money(p.unit_cost_cents)} a ${p.piece}` : ''}`}</span>
+        <span class="small" data-prtotal="${p.id}"></span></div>
     </div>`;
   }).join('');
 
@@ -419,18 +607,33 @@ function renderProteinRows() {
 function proteinTotals() {
   for (const p of PROTEINS) {
     const r = proteinRows[p.id] || {};
-    const n = Number(r.qty) || 0, c = cents(r.cost);
+    const n = Number(r.qty) || 0;
+    // blank cost means "use what the freezer says it cost"
+    const c = r.cost === '' || r.cost === undefined ? p.unit_cost_cents : cents(r.cost);
     const el = $(`[data-prtotal="${p.id}"]`);
-    if (el) el.textContent = n > 0 && c > 0 ? `= ${money(n * c)}` : '';
+    const freeEl = $(`[data-prfree="${p.id}"]`);
+    if (el) el.innerHTML = n > 0 && c > 0 ? ` · <strong>${money(n * c)}</strong>` : '';
+
+    // editing an existing cook: its own claim isn't news, so add it back
+    const free = (p.uncommitted === undefined ? 0 : p.uncommitted)
+      + (editingId ? (editingClaim[p.id] || 0) : 0);
+    if (freeEl && n > 0 && n > free + 1e-9) {
+      freeEl.innerHTML = `<span style="color:var(--warn)">short ${fmtQty(n - free)} ${p.pieces} —
+        log a meat run or it'll go negative</span>`;
+    } else if (freeEl && p.uncommitted !== undefined) {
+      freeEl.textContent = `${fmtQty(free)} free in the freezer` +
+        (p.unit_cost_cents ? ` at ${money(p.unit_cost_cents)} a ${p.piece}` : '');
+    }
   }
 }
 
 // What's actually going on the pit, as the API wants it.
-const proteinPayload = () => PROTEINS.map(p => ({
-  protein_id: p.id,
-  qty_total: Number((proteinRows[p.id] || {}).qty) || 0,
-  unit_cost_cents: cents((proteinRows[p.id] || {}).cost),
-}));
+const proteinPayload = () => PROTEINS.map(p => {
+  const r = proteinRows[p.id] || {};
+  // leave the cost blank and it books at what the freezer says a piece cost
+  const cost = r.cost === '' || r.cost === undefined ? p.unit_cost_cents : cents(r.cost);
+  return { protein_id: p.id, qty_total: Number(r.qty) || 0, unit_cost_cents: cost };
+});
 const pieceMix = () => {
   const m = {};
   for (const p of proteinPayload()) if (p.qty_total > 0) m[p.protein_id] = p.qty_total;
@@ -479,10 +682,11 @@ function renderSupplies(bg) {
     : '';
 
   $('#supTable').innerHTML = `<table>
-    <tr><th>Item</th><th>Unit</th><th>On hand</th><th>Cost each</th>
+    <tr><th></th><th>Item</th><th>Unit</th><th>On hand</th><th>Cost each</th>
       ${PROTEINS.map(p => `<th>Per ${p.piece}</th>`).join('')}
       <th>Per cook</th><th>Low at</th><th></th></tr>
     ${SUP.supplies.map((s, i) => `<tr${s.active ? '' : ' style="opacity:.5"'}>
+      <td>${arrows('sup', i, SUP.supplies.length)}</td>
       <td><input type="text" style="min-width:100px" value="${(s.name || '').replace(/"/g, '&quot;')}" data-sx="${i}" data-f="name"></td>
       <td><input type="text" style="width:64px" value="${(s.unit || '').replace(/"/g, '&quot;')}" data-sx="${i}" data-f="unit"></td>
       <td><input type="number" step="0.01" style="width:78px" value="${s.on_hand}" data-sx="${i}" data-f="on_hand"></td>
@@ -510,6 +714,7 @@ function renderSupplies(bg) {
       else if (f === 'cost') s.unit_cost_cents = Number(el.value || 0) * 100;
       else s[f] = Number(el.value);
     }));
+  wireArrows($('#supTable'), 'sup', SUP.supplies, 'supplies', renderSupplies);
   $('#supTable').querySelectorAll('[data-sxrm]').forEach(b =>
     b.addEventListener('click', async () => {
       const s = SUP.supplies[b.dataset.sxrm];
@@ -608,7 +813,8 @@ $('#saveCook').addEventListener('click', async () => {
       slots: slotRows.map(s => ({ label: `${to12(s.start)} – ${to12(s.end)}`, start_time: s.start, end_time: s.end, capacity: s.cap })),
     });
     editingId = null;
-    proteinRows = {};
+    proteinRows = {}; editingClaim = {};
+    await loadCold();
     renderProteinRows();
     previewSupplies();
     $('#saveCook').textContent = 'Put it on the calendar';
@@ -699,8 +905,20 @@ async function renderMenu(bg) {
   const products = await api('/api/admin/products');
   MENU = products;
   if (bg && busy('menu')) return;
-  $('#menuRows').innerHTML = products.map(p => `
+  renderMenuRows(products);
+}
+
+function renderMenuRows(products) {
+  // The shop groups the menu by protein, so this list does too and an item
+  // only moves within its own group -- letting it jump the fence would look
+  // like it worked and then snap back on the next load.
+  const sameGroup = (a, b) => products[a].protein_id === products[b].protein_id;
+  $('#menuRows').innerHTML = products.map((p, i) => `
+    ${i === 0 || products[i - 1].protein_id !== p.protein_id
+      ? `<h3 style="font-size:14px;text-transform:uppercase;letter-spacing:.06em;
+           color:var(--ink-soft);margin:16px 0 2px">${p.protein_name || 'Not on the pit'}</h3>` : ''}
     <div class="row" style="align-items:flex-end;border-bottom:1px solid var(--line);padding-bottom:6px">
+      <div class="field" style="flex:0 0 auto;padding-bottom:9px">${arrows('menu', i, products.length, sameGroup)}</div>
       <div class="field" style="flex:2 1 200px"><label>Item</label><input type="text" value="${p.name}" data-p="${p.id}" data-f="name"></div>
       <div class="field" style="flex:0 0 120px"><label>Price ($)</label><input type="number" step="0.01" value="${(p.price_cents/100).toFixed(2)}" data-p="${p.id}" data-f="price"></div>
       <div class="field" style="flex:0 0 100px"><label>Unit</label>
@@ -715,6 +933,9 @@ async function renderMenu(bg) {
       <div class="field" style="flex:0 0 120px"><label>Portion of one</label><input type="number" step="0.0001" value="${+Number(p.piece_equiv).toFixed(4)}" data-p="${p.id}" data-f="equiv"></div>
       <div class="field" style="flex:0 0 100px"><label>Active</label>
         <select data-p="${p.id}" data-f="active"><option value="1" ${p.active?'selected':''}>Yes</option><option value="0" ${!p.active?'selected':''}>No</option></select></div>
+      <div class="field" style="flex:1 1 190px"><label>Your photo (optional)</label>
+        <input type="text" value="${(p.image_url || '').replace(/"/g, '&quot;')}" data-p="${p.id}" data-f="image"
+               placeholder="/img/my-brisket.jpg"></div>
       <div class="field" style="flex:0 0 auto"><button class="btn sm" data-save="${p.id}">Save</button></div>
     </div>`).join('') + `
     <details style="margin-top:16px"><summary>Add a new item</summary>
@@ -729,16 +950,19 @@ async function renderMenu(bg) {
       </div>
       <p class="small muted">"Portion of one" is how much of a single butt, brisket or bird
       one unit eats — 1 for a whole one, about 0.22 for a pound. That's what drives the countdown.
+      Each group shows a drawn badge until you put your own photo in: drop a JPG in the site's
+      <code>public/img</code> folder and point the photo field at it, like <code>/img/my-brisket.jpg</code>.
       Use 0 for anything that doesn't come off the pit (sauce, buns, sides).</p>
     </details>`;
 
+  wireArrows($('#menuRows'), 'menu', products, 'products', () => renderMenuRows(products));
   $('#menuRows').querySelectorAll('button[data-save]').forEach(b =>
     b.addEventListener('click', async () => {
       const id = b.dataset.save, g = f => $(`[data-p="${id}"][data-f="${f}"]`).value;
       await post('/api/admin/products', {
         id: Number(id), name: g('name'), unit: g('unit'), price_cents: cents(g('price')),
         piece_equiv: Number(g('equiv')), protein_id: Number(g('protein')),
-        active: Number(g('active')), sort_order: 0,
+        active: Number(g('active')), image_url: g('image'),
       });
       b.textContent = 'Saved'; setTimeout(() => b.textContent = 'Save', 1500);
     }));
@@ -802,6 +1026,7 @@ async function load(bg) {
     PROTEINS = await api('/api/admin/proteins');
     renderProteinRows();
   }
+  loadCold(bg).catch(() => {});
   MENU = await api('/api/admin/products');
   DATA = await api('/api/admin/dashboard');
   render(bg); renderSettings(bg); renderMenu(bg); renderMessages(bg);

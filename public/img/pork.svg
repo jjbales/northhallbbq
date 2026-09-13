@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Smoked Boston butt">
+  <defs>
+    <radialGradient id="pkBark" cx="42%" cy="34%" r="72%">
+      <stop offset="0" stop-color="#7d3f1c"/><stop offset=".55" stop-color="#5a2a12"/>
+      <stop offset="1" stop-color="#33170a"/>
+    </radialGradient>
+    <linearGradient id="pkRing" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c2481f"/><stop offset="1" stop-color="#8d2f14"/>
+    </linearGradient>
+    <clipPath id="pkClip">
+      <path d="M31 44c4-17 20-27 36-25 18 2 29 15 30 32 1 19-11 33-30 36-20 3-36-7-38-24-1-7 0-13 2-19z"/>
+    </clipPath>
+  </defs>
+  <circle cx="60" cy="60" r="54" fill="#2d5035"/>
+  <circle cx="60" cy="60" r="45" fill="#24402a"/>
+  <!-- the shoulder -->
+  <path d="M31 44c4-17 20-27 36-25 18 2 29 15 30 32 1 19-11 33-30 36-20 3-36-7-38-24-1-7 0-13 2-19z" fill="url(#pkBark)"/>
+  <g clip-path="url(#pkClip)">
+    <!-- smoke ring just under the bark -->
+    <path d="M31 44c4-17 20-27 36-25 18 2 29 15 30 32 1 19-11 33-30 36-20 3-36-7-38-24-1-7 0-13 2-19z"
+          fill="none" stroke="url(#pkRing)" stroke-width="7" opacity=".85"/>
+    <!-- bark: rub crust, broken up -->
+    <g fill="#150a04" opacity=".5">
+      <ellipse cx="47" cy="34" rx="9" ry="4" transform="rotate(-18 47 34)"/>
+      <ellipse cx="72" cy="30" rx="7" ry="3.4" transform="rotate(9 72 30)"/>
+      <ellipse cx="86" cy="48" rx="6" ry="3" transform="rotate(28 86 48)"/>
+      <ellipse cx="42" cy="62" rx="8" ry="3.6" transform="rotate(-6 42 62)"/>
+      <ellipse cx="66" cy="72" rx="10" ry="4.2" transform="rotate(-12 66 72)"/>
+      <ellipse cx="87" cy="72" rx="5.5" ry="2.8" transform="rotate(-30 87 72)"/>
+      <ellipse cx="55" cy="50" rx="6" ry="2.8" transform="rotate(22 55 50)"/>
+    </g>
+    <g fill="#f7c14a" opacity=".22">
+      <ellipse cx="52" cy="28" rx="11" ry="4" transform="rotate(-20 52 28)"/>
+      <ellipse cx="38" cy="52" rx="6" ry="2.6" transform="rotate(-40 38 52)"/>
+    </g>
+    <!-- the blade bone -->
+    <path d="M70 84c-1-9 3-14 9-16" stroke="#f2e7d2" stroke-width="7" stroke-linecap="round" fill="none"/>
+    <circle cx="80" cy="67" r="5" fill="#f2e7d2"/>
+    <circle cx="80" cy="67" r="2" fill="#d8c7a6"/>
+  </g>
+  <path d="M31 44c4-17 20-27 36-25 18 2 29 15 30 32 1 19-11 33-30 36-20 3-36-7-38-24-1-7 0-13 2-19z"
+        fill="none" stroke="#150a04" stroke-width="2.5"/>
+</svg>

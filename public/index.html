@@ -280,7 +280,7 @@ function renderProducts() {
     if (!onPit.has(p.protein_id)) continue;      // not on the pit that day
     let g = groups.find(x => x.protein_id === p.protein_id);
     if (!g) {
-      g = { protein_id: p.protein_id, name: p.protein_name,
+      g = { protein_id: p.protein_id, name: p.protein_name, art: p.art,
             line: c.proteins.find(x => x.protein_id === p.protein_id), items: [] };
       groups.push(g);
     }
@@ -290,15 +290,18 @@ function renderProducts() {
   $('#products').innerHTML = groups.map(g => `
     <div class="pgroup ${g.line && g.line.sold_out ? 'out' : ''}">
       <div class="ghead">
-        <span>${g.name}</span>
+        <span class="gname">${g.art ? `<img src="${g.art}" alt="" class="gart">` : ''}${g.name}</span>
         <span class="small">${g.line && g.line.sold_out ? 'Sold out'
           : `${g.line.whole_available} ${pieceWord(g.line, g.line.whole_available)} left`}</span>
       </div>
       ${g.items.map(p => `
         <div class="item">
-          <div>
-            <div><strong>${p.name}</strong></div>
-            <div class="small muted">${p.description || ''}</div>
+          <div class="iwrap">
+            ${p.image_url ? `<img src="${p.image_url}" alt="" class="ishot" loading="lazy">` : ''}
+            <div>
+              <div><strong>${p.name}</strong></div>
+              <div class="small muted">${p.description || ''}</div>
+            </div>
           </div>
           <div class="row" style="align-items:center;gap:14px;flex-wrap:nowrap">
             <div class="price">${money(p.price_cents)}${p.unit === 'lb' ? ' / lb' : ''}</div>
@@ -384,9 +387,14 @@ function recalc() {
 function availLine(c) {
   const live = c.proteins.filter(p => p.total > 0);
   if (!live.length) return `<strong>${fmtDate(c.cook_date)}</strong> — nothing on the pit yet.`;
-  const bits = live.map(p => p.sold_out
-    ? `${p.name.toLowerCase()} sold out`
-    : `${p.whole_available} ${pieceWord(p, p.whole_available)} of ${p.name.toLowerCase()}`);
+  // "2 briskets of brisket" reads badly -- drop the name when the piece
+  // word already says it
+  const bits = live.map(p => {
+    const n = p.name.toLowerCase(), w = pieceWord(p, p.whole_available).toLowerCase();
+    const said = w.includes(n) || n.includes(w);
+    return p.sold_out ? `${n} sold out`
+      : `${p.whole_available} ${pieceWord(p, p.whole_available)}${said ? '' : ` of ${n}`}`;
+  });
   return `<strong>${fmtDate(c.cook_date)}</strong> — ${bits.join(', ')} left.`;
 }
 
