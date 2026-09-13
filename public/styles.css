@@ -723,15 +723,17 @@ header.site{
    that order because a see-through gradient shows whatever sits under it. */
 header.site .hero h1,header.site h1{
   font-family:var(--font-display);font-weight:400;font-style:normal;
-  font-size:clamp(40px,6.4vw,84px);line-height:.92;letter-spacing:.015em;
+  /* one line, always: sized to the space beside the logo, letters given a
+     little air so the word doesn't read as a solid block */
+  font-size:clamp(24px,3.6vw,54px);line-height:.95;letter-spacing:.07em;white-space:nowrap;
   transform:skewX(-7deg);transform-origin:left bottom;display:inline-block;
   position:relative;margin:2px 0 14px;
   color:#fff;-webkit-text-fill-color:#fff;background:none;
-  -webkit-text-stroke:5px #fff;paint-order:stroke fill;
-  text-shadow:6px 6px 0 #070e09, 9px 9px 0 rgba(0,0,0,.55), 0 20px 40px rgba(0,0,0,.6)}
+  -webkit-text-stroke:4px #fff;paint-order:stroke fill;
+  text-shadow:5px 5px 0 #070e09, 8px 8px 0 rgba(0,0,0,.55), 0 20px 40px rgba(0,0,0,.6)}
 header.site h1::before{display:none}
 header.site h1::after{content:attr(data-text);position:absolute;inset:0;z-index:1;
-  -webkit-text-stroke:0;text-shadow:none;
+  -webkit-text-stroke:0;text-shadow:none;letter-spacing:inherit;white-space:nowrap;
   background:linear-gradient(180deg,#ffe38a 0%,var(--ember-hot) 42%,var(--ember-mid) 100%);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
 
@@ -828,8 +830,9 @@ footer.site{margin-top:0;clip-path:none;background:#070e09;color:#93a297}
 @media (max-width:620px){
   .lockup{gap:14px;align-items:center}
   .lockup .mark{width:104px;height:104px}
-  header.site h1{font-size:34px;-webkit-text-stroke:3px #fff;
+  header.site h1{font-size:clamp(19px,6vw,27px);letter-spacing:.05em;-webkit-text-stroke:2.5px #fff;
     text-shadow:3px 3px 0 #070e09,5px 5px 0 rgba(0,0,0,.55)}
+  .lockup .mark{width:88px;height:88px}
   .eyebrow{font-size:10.5px;letter-spacing:.14em}
   .eyebrow::before{flex-basis:14px}
   .eyebrow .more{display:none}
