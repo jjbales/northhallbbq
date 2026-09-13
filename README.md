@@ -169,16 +169,58 @@ and the shop's groups follow.
 
 Saving a price or a count never moves a row; only the arrows do.
 
-## Pictures
+## Badges
 
-Each protein ships with a drawn badge — original SVG in the site's colors,
-which is why they match the logo and cost nothing to load. They're in
-`public/img`, one per protein slug.
+Each protein ships with a drawn badge — original SVG in the site's colors, in
+`public/img`, one per protein slug. They show in the shop's group headers until
+a photo takes over, and they're what a new protein gets by default.
 
-To use your own photo for an item, drop a JPG in `public/img` and point the
-photo field on Menu & prices at it (`/img/my-brisket.jpg`). It shows as a
-thumbnail next to that item and takes over from the badge. Your own food will
-outsell a drawing every time.
+To use a photo for a menu item instead, put it in `public/img` and point the
+photo field on Menu & prices at it (`/img/my-brisket.jpg`).
+
+## Photos
+
+Web-sized copies live in `public/photos`; your originals stay wherever you put
+them. Each photo wants two files — `name.jpg` at about 1600px and
+`name-thumb.jpg` at about 640px — and the album uses the thumb in the grid and
+the big one in the lightbox, so a phone isn't downloading 4 MB per picture.
+
+Drop files in that folder and hit **Look for new photos** on the Photos &
+comments tab. Caption them there; the caption is what a customer reads and what
+a screen reader says out loud. "On the shop page" puts a photo in the strip
+above the cook dates. The arrows set the order.
+
+**Strip the metadata.** Phone photos carry GPS coordinates by default, and a
+photo taken at the pit will point straight at the pickup address that's
+deliberately kept off the site. Re-saving through any image editor drops it;
+the resize script used for the first three builds a fresh image with no EXIF
+carried over, which is what does it.
+
+## Comments and reviews
+
+Customers leave comments at `/gallery.html` — name, an optional 1-5 rating, and
+what they thought. Email and phone are optional, and they are **never** shown
+publicly; they're there so you can reply.
+
+**Nothing appears on the site until you approve it.** The Photos & comments tab
+shows a count of what's waiting, and each one gets Approve, Hide, or Delete.
+You can add a public reply that sits under theirs.
+
+Three guards keep the box from turning into a spam funnel:
+
+- A hidden field no person ever sees. If it comes back filled in, the
+  submission is dropped silently — the bot gets a thank-you and nothing is
+  stored.
+- Three submissions an hour from one address, hashed so no log of who visited
+  from where is kept.
+- Length caps on name and comment, and a rating that has to be 1-5 or nothing.
+
+Comment text is escaped everywhere it's displayed — the shop page, the album,
+and the admin queue — so a comment containing markup shows up as the characters
+someone typed rather than running as code.
+
+Turn the whole thing off with **Show the comment box and reviews** in Settings;
+existing comments stay in the database, they just stop being served.
 
 ## Supplies
 

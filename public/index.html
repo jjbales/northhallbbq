@@ -79,7 +79,7 @@
         <p class="ribbon"><span id="tagline">Since 2014 — one butt or a thousand, same flavor every time.</span></p>
         </div>
       </div>
-      <a href="admin.html">Owner login</a>
+      <span class="navlinks"><a href="gallery.html">Photos &amp; reviews</a><a href="admin.html">Owner login</a></span>
     </div>
     <div class="trust">
       <div><b>2014</b>Cooking since</div>
@@ -91,6 +91,14 @@
 </header>
 
 <main class="wrap">
+  <section class="card" id="featCard" hidden>
+    <div class="row" style="justify-content:space-between;align-items:baseline">
+      <h2 style="margin:0" id="featHead">Off the pit</h2>
+      <a href="gallery.html" class="small">See them all &rarr;</a>
+    </div>
+    <div id="featStrip" class="featstrip"></div>
+  </section>
+
   <section class="card">
     <h2>Pick a cook date</h2>
     <p class="muted small" style="margin-top:-6px">Each cook is a set number off the pit. When they're gone, they're gone.</p>
@@ -183,6 +191,17 @@
 
   <div class="stars">&#9733; &nbsp; &#9733; &nbsp; &#9733;</div>
 </main>
+
+<section class="wrap" id="saidWrap" hidden>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:baseline">
+      <h2 style="margin:0">What folks say</h2>
+      <a href="gallery.html#fbCard" class="small">Leave a comment &rarr;</a>
+    </div>
+    <div id="saidSummary" class="small muted"></div>
+    <div id="saidTeaser" style="margin-top:12px"></div>
+  </div>
+</section>
 
 <footer class="site"><div class="wrap"><span id="footName"></span> · northhallbbq.com</div></footer>
 
@@ -468,6 +487,41 @@ $('#submit').addEventListener('click', async () => {
 
 $('#email').addEventListener('input', recalc);
 
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const starRow = n => '<span class="srow">' +
+  [1,2,3,4,5].map(x => `<span class="${x <= n ? 'on' : ''}">&#9733;</span>`).join('') + '</span>';
+
+// A few pictures and a couple of reviews, with the rest a click away.
+async function loadExtras() {
+  try {
+    const photos = (await api('/api/photos')).filter(p => p.featured).slice(0, 6);
+    if (photos.length) {
+      $('#featCard').hidden = false;
+      $('#featHead').textContent = CFG.gallery_headline || 'Off the pit';
+      $('#featStrip').innerHTML = photos.map(p => `
+        <a class="feat" href="gallery.html" aria-label="${esc(p.caption || 'Photos')}">
+          <img src="${esc(p.thumb || p.file)}" alt="${esc(p.caption || '')}" loading="lazy">
+        </a>`).join('');
+    }
+  } catch (e) {}
+  if (!CFG.show_feedback) return;
+  try {
+    const d = await api('/api/feedback?limit=3');
+    if (!d.items || !d.items.length) return;
+    $('#saidWrap').hidden = false;
+    $('#saidSummary').innerHTML = d.summary && d.summary.average
+      ? `${starRow(Math.round(d.summary.average))} ${d.summary.average} out of 5 · ${d.summary.count} ${d.summary.count === 1 ? 'review' : 'reviews'}`
+      : '';
+    $('#saidTeaser').innerHTML = d.items.map(f => `
+      <blockquote class="said">
+        ${f.rating ? starRow(f.rating) : ''}
+        <p>${esc(f.body)}</p>
+        <cite>— ${esc(f.name)}</cite>
+      </blockquote>`).join('');
+  } catch (e) {}
+}
+
 (async function init() {
   CFG = await api('/api/config');
   PRODUCTS = await api('/api/products');
@@ -496,10 +550,11 @@ $('#email').addEventListener('input', recalc);
       (CFG.contact_email ? `<a class="btn ghost" href="mailto:${CFG.contact_email}?subject=${encodeURIComponent('Fundraiser cook — ' + CFG.business_name)}">Email about a fundraiser</a>` : '');
   }
   $('#payNote').textContent =
-    CFG.payment_mode === 'stripe' ? 'Secure card checkout. Your butt is held while you pay.'
+    CFG.payment_mode === 'stripe' ? 'Secure card checkout. Your order is held while you pay.'
     : CFG.payment_mode === 'cheddarup' ? 'Your order is held the moment you reserve. Payment link comes next.'
     : 'No payment up front — reserve now, settle up at pickup.';
   await refresh();
+  loadExtras();
   setInterval(tickClocks, 1000);
   setInterval(refresh, 15000);
 })();

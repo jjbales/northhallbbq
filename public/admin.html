@@ -19,6 +19,10 @@
   .tabs button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 16px;
     cursor:pointer;font:inherit;font-size:14px}
   .tabs button[aria-selected="true"]{background:var(--green);color:#fff;border-color:var(--green)}
+  .pend{display:inline-block;min-width:18px;padding:1px 6px;margin-left:5px;border-radius:99px;
+    background:var(--ember-deep);color:#fff;font-size:11px;font-weight:700;vertical-align:1px}
+  .srow{color:#d7d2c7;letter-spacing:1px}
+  .srow .on{color:var(--ember-mid)}
   .msg{border:1px solid var(--line);border-radius:11px;padding:14px;margin:10px 0;background:#fff}
   .msgtext{background:var(--green-pale);border-radius:9px;padding:10px 12px;margin:10px 0;
     font-size:14px;white-space:pre-wrap}
@@ -49,6 +53,7 @@
       <button data-tab="new" aria-selected="false">Schedule a cook</button>
       <button data-tab="msgs" aria-selected="false">Confirmations &amp; reminders</button>
       <button data-tab="supplies" aria-selected="false">Inventory</button>
+      <button data-tab="photos" aria-selected="false">Photos &amp; comments <span id="pendBadge" class="pend" hidden></span></button>
       <button data-tab="menu" aria-selected="false">Menu &amp; prices</button>
       <button data-tab="settings" aria-selected="false">Settings</button>
     </div>
@@ -170,6 +175,32 @@
       </div>
     </section>
 
+    <section id="tab-photos" class="hide">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:baseline">
+          <h2 style="margin:0">The album</h2>
+          <button class="btn ghost sm" id="scanPhotos" type="button">Look for new photos</button>
+        </div>
+        <p class="small muted">Drop photos into the site's <code>public/photos</code> folder, then hit
+        "Look for new photos". Caption them here — the caption is what a customer reads, and what a
+        screen reader says. "On the shop page" puts it in the strip above the cook dates.</p>
+        <div id="photoMsg"></div>
+        <div id="photoRows" data-region="photos"></div>
+        <button class="btn sm" id="savePhotos" style="margin-top:12px">Save the album</button>
+        <span class="small muted" id="photoSaved" style="margin-left:8px"></span>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:baseline">
+          <h2 style="margin:0">What customers said</h2>
+          <span class="small muted" id="fbStats"></span>
+        </div>
+        <p class="small muted">Nothing shows on the site until you approve it. Email and phone
+        are yours only — they never appear publicly, approved or not.</p>
+        <div id="fbList" data-region="fb"></div>
+      </div>
+    </section>
+
     <section id="tab-menu" class="card hide">
       <h2>Menu &amp; prices</h2>
       <p class="small muted" style="margin-top:-6px">Each item comes off one thing on the pit and eats a portion of it.
@@ -192,6 +223,9 @@
 const $ = (s, r = document) => r.querySelector(s);
 const money = c => (c < 0 ? '-$' : '$') + (Math.abs(c) / 100).toFixed(2);
 const cents = v => Math.round(Number(v || 0) * 100);
+// customer-written text goes through this before it ever touches innerHTML
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let DATA = { cooks: [], settings: {} };
 let MENU = [];
 
@@ -236,7 +270,7 @@ const settleIdle = () => [...dirty].forEach(id => { if (!focusedIn(id)) dirty.de
 $('#tabs').addEventListener('click', e => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
   document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
-  ['cooks', 'new', 'msgs', 'supplies', 'menu', 'settings'].forEach(t =>
+  ['cooks', 'new', 'msgs', 'supplies', 'photos', 'menu', 'settings'].forEach(t =>
     $('#tab-' + t).classList.toggle('hide', t !== b.dataset.tab));
 });
 
@@ -421,6 +455,144 @@ function editCook(id) {
 }
 
 
+
+/* ------------------------------------------------------- photos & comments */
+let PHOTOS = [], FB = { items: [], summary: {} };
+
+async function loadPhotos(bg) {
+  if (bg && busy('photos')) return;
+  PHOTOS = await api('/api/admin/photos');
+  renderPhotos();
+}
+
+function renderPhotos() {
+  if (!PHOTOS.length) {
+    $('#photoRows').innerHTML = '<p class="muted small">No photos yet. Put some JPGs in ' +
+      '<code>public/photos</code> and hit "Look for new photos".</p>';
+    return;
+  }
+  $('#photoRows').innerHTML = PHOTOS.map((p, i) => `
+    <div class="row" style="align-items:center;border-bottom:1px solid var(--line);padding:10px 0">
+      <div class="field" style="flex:0 0 auto;padding-bottom:0">${arrows('photo', i, PHOTOS.length)}</div>
+      <img src="${(p.thumb || p.file)}" alt="" style="width:84px;height:62px;object-fit:cover;
+        border-radius:8px;border:1px solid var(--line);flex:0 0 auto">
+      <div class="field" style="flex:2 1 240px"><label>Caption</label>
+        <input type="text" maxlength="300" value="${(p.caption || '').replace(/"/g, '&quot;')}"
+               data-ph="${i}" data-f="caption" placeholder="Eight butts, twelve hours in"></div>
+      <div class="field" style="flex:0 0 130px"><label>Of what</label>
+        <select data-ph="${i}" data-f="protein_id">
+          <option value="">—</option>
+          ${PROTEINS.map(x => `<option value="${x.id}" ${p.protein_id === x.id ? 'selected' : ''}>${x.name}</option>`).join('')}
+        </select></div>
+      <div class="field" style="flex:0 0 130px"><label>On the shop page</label>
+        <select data-ph="${i}" data-f="featured">
+          <option value="1" ${p.featured ? 'selected' : ''}>Yes</option>
+          <option value="0" ${!p.featured ? 'selected' : ''}>No</option>
+        </select></div>
+      <div class="field" style="flex:0 0 100px"><label>Showing</label>
+        <select data-ph="${i}" data-f="active">
+          <option value="1" ${p.active ? 'selected' : ''}>Yes</option>
+          <option value="0" ${!p.active ? 'selected' : ''}>No</option>
+        </select></div>
+      <div class="field" style="flex:0 0 auto;padding-bottom:0">
+        <button class="btn ghost sm" type="button" data-phrm="${p.id}">Remove</button></div>
+    </div>`).join('');
+
+  $('#photoRows').querySelectorAll('[data-ph]').forEach(el =>
+    el.addEventListener('input', () => {
+      const p = PHOTOS[el.dataset.ph], f = el.dataset.f;
+      p[f] = f === 'caption' ? el.value : (el.value === '' ? null : Number(el.value));
+    }));
+  $('#photoRows').querySelectorAll('[data-phrm]').forEach(b =>
+    b.addEventListener('click', async () => {
+      if (!confirm('Take this out of the album? The file stays on the server.')) return;
+      await api('/api/admin/photos/' + b.dataset.phrm, { method: 'DELETE' });
+      await loadPhotos();
+    }));
+  wireArrows($('#photoRows'), 'photo', PHOTOS, null, renderPhotos);
+}
+
+$('#scanPhotos').addEventListener('click', async () => {
+  try {
+    const d = await post('/api/admin/photos/scan');
+    $('#photoMsg').innerHTML = `<div class="notice ok">${d.added
+      ? `Found ${d.added} new photo${d.added === 1 ? '' : 's'}.` : 'Nothing new in that folder.'}</div>`;
+    setTimeout(() => $('#photoMsg').innerHTML = '', 3000);
+    await loadPhotos();
+  } catch (e) {
+    $('#photoMsg').innerHTML = `<div class="notice err">${e.message}</div>`;
+  }
+});
+
+$('#savePhotos').addEventListener('click', async () => {
+  try {
+    for (const [i, p] of PHOTOS.entries()) await post('/api/admin/photos', { ...p, sort_order: i + 1 });
+    settled('photos');
+    await loadPhotos();
+    $('#photoSaved').textContent = 'Saved.';
+    setTimeout(() => $('#photoSaved').textContent = '', 2500);
+  } catch (e) {
+    $('#photoSaved').innerHTML = `<span style="color:var(--warn)">${e.message}</span>`;
+  }
+});
+
+const stars = n => '<span class="srow">' +
+  [1,2,3,4,5].map(i => `<span class="${i <= n ? 'on' : ''}">&#9733;</span>`).join('') + '</span>';
+
+async function loadFeedback(bg) {
+  if (bg && busy('fb')) return;
+  FB = await api('/api/admin/feedback');
+  renderFeedback();
+}
+
+function renderFeedback() {
+  const s = FB.summary || {};
+  $('#fbStats').textContent = s.count
+    ? `${s.average} out of 5 across ${s.count} approved${s.pending ? ` · ${s.pending} waiting on you` : ''}`
+    : (s.pending ? `${s.pending} waiting on you` : '');
+  const badge = $('#pendBadge');
+  badge.hidden = !s.pending;
+  badge.textContent = s.pending || '';
+
+  if (!FB.items.length) { $('#fbList').innerHTML = '<p class="muted small">Nothing yet.</p>'; return; }
+  const label = { pending: 'Waiting on you', approved: 'On the site', hidden: 'Hidden' };
+  $('#fbList').innerHTML = FB.items.map(f => `
+    <div class="card" style="margin:0 0 12px;padding:14px;box-shadow:none;border:1px solid var(--line)">
+      <div class="row" style="justify-content:space-between;align-items:baseline;gap:8px">
+        <div><strong>${esc(f.name)}</strong> ${f.rating ? stars(f.rating) : ''}
+          <span class="small muted">· ${f.created_at.slice(0, 16).replace('T', ' ')}
+          ${f.order_public_id ? `· order ${esc(f.order_public_id)}` : ''}</span></div>
+        <span class="badge ${f.status === 'approved' ? 'open' : f.status === 'hidden' ? 'grey' : 'low'}">${label[f.status]}</span>
+      </div>
+      <p style="margin:9px 0;line-height:1.55">${esc(f.body)}</p>
+      ${(f.email || f.phone) ? `<div class="small muted">Reach them: ${esc(f.email || '')}${f.email && f.phone ? ' · ' : ''}${esc(f.phone || '')} <em>(never shown publicly)</em></div>` : ''}
+      <div class="field" style="margin-top:10px"><label>Your reply (optional, shows under theirs)</label>
+        <input type="text" maxlength="1000" value="${(f.reply || '').replace(/"/g, '&quot;')}" data-fbreply="${f.id}"></div>
+      <div class="row" style="gap:6px">
+        ${f.status !== 'approved' ? `<button class="btn sm" data-fb="${f.id}" data-st="approved">Put it on the site</button>` : ''}
+        ${f.status !== 'hidden' ? `<button class="btn ghost sm" data-fb="${f.id}" data-st="hidden">Hide</button>` : ''}
+        ${f.status !== 'pending' ? `<button class="btn ghost sm" data-fb="${f.id}" data-st="pending">Back to waiting</button>` : ''}
+        <button class="btn ghost sm" data-fbdel="${f.id}">Delete</button>
+      </div>
+    </div>`).join('');
+
+  $('#fbList').querySelectorAll('[data-fb]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const reply = $(`[data-fbreply="${b.dataset.fb}"]`);
+      await post(`/api/admin/feedback/${b.dataset.fb}`,
+        { status: b.dataset.st, reply: reply ? reply.value : undefined });
+      settled('fb');
+      await loadFeedback();
+    }));
+  $('#fbList').querySelectorAll('[data-fbdel]').forEach(b =>
+    b.addEventListener('click', async () => {
+      if (!confirm('Delete this for good?')) return;
+      await api('/api/admin/feedback/' + b.dataset.fbdel, { method: 'DELETE' });
+      await loadFeedback();
+    }));
+}
+
+/* ------------------------------------------------------- photos & comments end */
 /* ------------------------------------------------- moving rows up and down */
 // Arrows rather than drag: they work the same on a phone in the driveway as
 // they do at a desk, and they can't half-drop a row.
@@ -445,6 +617,7 @@ function wireArrows(root, kind, list, table, after) {
       if (j < 0 || j >= list.length) return;
       [list[i], list[j]] = [list[j], list[i]];
       after();
+      if (!table) return;               // saved with the rest of that form instead
       const ids = list.map(x => x.id).filter(Boolean);
       if (ids.length) { try { await post('/api/admin/reorder/' + table, { ids }); } catch (e) {} }
     }));
@@ -993,6 +1166,12 @@ const SETTING_FIELDS = [
   ['fundraiser_cta', 'Fundraiser call to action', 'text'],
   ['yield_lbs_per_butt', 'Pounds of pulled pork per butt', 'number'],
   ['hold_minutes', 'Minutes to hold an unpaid cart', 'number'],
+  ['gallery_headline', 'Photo page heading', 'text'],
+  ['gallery_blurb', 'Photo page intro', 'textarea'],
+  ['show_feedback', 'Show the comment box and reviews (1 = yes, 0 = no)', 'number'],
+  ['feedback_headline', 'Comment box heading', 'text'],
+  ['feedback_blurb', 'Comment box intro', 'textarea'],
+  ['feedback_thanks', 'What they see after sending', 'textarea'],
 ];
 function renderSettings(bg) {
   if (bg && busy('settings')) return;
@@ -1027,6 +1206,8 @@ async function load(bg) {
     renderProteinRows();
   }
   loadCold(bg).catch(() => {});
+  loadPhotos(bg).catch(() => {});
+  loadFeedback(bg).catch(() => {});
   MENU = await api('/api/admin/products');
   DATA = await api('/api/admin/dashboard');
   render(bg); renderSettings(bg); renderMenu(bg); renderMessages(bg);

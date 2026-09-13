@@ -10,8 +10,10 @@ const { availability, priceCart, releaseExpiredHolds, ordersCloseAt,
 const { projectedUse, piecesForCook, recordPurchase, consumeForCook, releaseForCook,
         suppliesForCook, shelf, setRates, costByProtein } = require('./lib/supplies');
 const cold = require('./lib/coldstorage');
+const fb = require('./lib/feedback');
 
 const app = express();
+app.set('trust proxy', true);
 const PORT = process.env.PORT || 4000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'smoke';
@@ -53,6 +55,11 @@ app.get('/api/config', (req, res) => {
     fundraiser_cta: s.fundraiser_cta,
     yield_lbs_per_butt: Number(s.yield_lbs_per_butt),
     hold_minutes: Number(s.hold_minutes),
+    gallery_headline: s.gallery_headline,
+    gallery_blurb: s.gallery_blurb,
+    feedback_headline: s.feedback_headline,
+    feedback_blurb: s.feedback_blurb,
+    show_feedback: s.show_feedback === '1',
   });
 });
 
@@ -73,6 +80,36 @@ app.get('/api/products', (req, res) => {
 // uses both, so it can pre-fill the cost and warn you when you're short.
 app.get('/api/admin/proteins', requireAdmin, (req, res) =>
   res.json(cold.freezerWithCommitments()));
+
+// The album. Web-sized copies, captions in the order you set.
+app.get('/api/photos', (req, res) => {
+  res.json(
+    db.prepare(
+      `SELECT p.id, p.file, p.thumb, p.caption, p.featured, x.name AS protein_name
+         FROM photos p LEFT JOIN proteins x ON x.id = p.protein_id
+        WHERE p.active = 1 ORDER BY p.sort_order, p.id`
+    ).all()
+  );
+});
+
+// What customers said -- approved only, contact details never leave the admin.
+app.get('/api/feedback', (req, res) => {
+  if (getSetting('show_feedback') !== '1') return res.json({ items: [], summary: null });
+  res.json({ items: fb.approved(req.query.limit), summary: fb.summary() });
+});
+
+app.post('/api/feedback', (req, res) => {
+  try {
+    const { name, rating, body, email, phone, order, website } = req.body || {};
+    const out = fb.submit({
+      name, rating, body, email, phone, orderPublicId: order,
+      ip: req.ip, trap: website,     // "website" is the honeypot
+    });
+    res.json({ ok: true, message: getSetting('feedback_thanks') });
+  } catch (e) {
+    res.status(e.code || 400).json({ error: e.message });
+  }
+});
 
 // Every open cook, soonest first, with live availability.
 app.get('/api/cooks', (req, res) => {
@@ -389,6 +426,91 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
+});
+
+// ----------------------------------------------------------------- photos
+// Photos are dropped into public/photos by hand; this picks them up so you
+// don't have to type filenames.
+const fsp = require('fs');
+app.post('/api/admin/photos/scan', requireAdmin, (req, res) => {
+  try {
+    const dir = path.join(__dirname, 'public', 'photos');
+    if (!fsp.existsSync(dir)) return res.json({ added: 0, photos: [] });
+    const files = fsp.readdirSync(dir).filter((f) => /\.(jpe?g|png|webp|gif)$/i.test(f));
+    const ins = db.prepare(
+      'INSERT OR IGNORE INTO photos (file, thumb, caption, sort_order) VALUES (?,?,?,?)'
+    );
+    let added = 0, n = db.prepare('SELECT COALESCE(MAX(sort_order),0) m FROM photos').get().m;
+    for (const f of files) {
+      if (/-thumb\./i.test(f)) continue;                 // the small copy isn't its own photo
+      const base = f.replace(/\.[^.]+$/, '');
+      const ext = f.match(/\.[^.]+$/)[0];
+      const thumb = files.includes(`${base}-thumb${ext}`) ? `/photos/${base}-thumb${ext}` : `/photos/${f}`;
+      const r = ins.run(`/photos/${f}`, thumb, '', ++n);
+      added += r.changes;
+    }
+    res.json({ added, photos: db.prepare('SELECT * FROM photos ORDER BY sort_order, id').all() });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/photos', requireAdmin, (req, res) =>
+  res.json(db.prepare(
+    `SELECT p.*, x.name AS protein_name FROM photos p
+       LEFT JOIN proteins x ON x.id = p.protein_id ORDER BY p.sort_order, p.id`
+  ).all())
+);
+
+app.post('/api/admin/photos', requireAdmin, (req, res) => {
+  try {
+    const { id, caption, protein_id, featured, active, sort_order } = req.body || {};
+    const p = db.prepare('SELECT * FROM photos WHERE id = ?').get(Number(id));
+    if (!p) return res.status(404).json({ error: 'No such photo.' });
+    const order = sort_order === undefined || sort_order === null || sort_order === ''
+      ? p.sort_order : Number(sort_order);
+    db.prepare(
+      `UPDATE photos SET caption=?, protein_id=?, featured=?, active=?, sort_order=? WHERE id=?`
+    ).run(String(caption || '').slice(0, 300), protein_id ? Number(protein_id) : null,
+          featured ? 1 : 0, active === 0 || active === false ? 0 : 1, order, p.id);
+    res.json(db.prepare('SELECT * FROM photos ORDER BY sort_order, id').all());
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.delete('/api/admin/photos/:id', requireAdmin, (req, res) => {
+  // drops it from the album; the file itself stays on disk
+  db.prepare('DELETE FROM photos WHERE id = ?').run(Number(req.params.id));
+  res.json({ ok: true });
+});
+
+// --------------------------------------------------------------- feedback
+app.get('/api/admin/feedback', requireAdmin, (req, res) => {
+  res.json({
+    items: db.prepare('SELECT * FROM feedback ORDER BY created_at DESC LIMIT 200').all(),
+    summary: fb.summary(),
+  });
+});
+
+app.post('/api/admin/feedback/:id', requireAdmin, (req, res) => {
+  try {
+    const { status, reply } = req.body || {};
+    const row = db.prepare('SELECT * FROM feedback WHERE id = ?').get(Number(req.params.id));
+    if (!row) return res.status(404).json({ error: 'No such comment.' });
+    const next = ['pending', 'approved', 'hidden'].includes(status) ? status : row.status;
+    db.prepare(
+      `UPDATE feedback SET status=?, reply=?, reviewed_at=datetime('now') WHERE id=?`
+    ).run(next, reply === undefined ? row.reply : String(reply).slice(0, 1000), row.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.delete('/api/admin/feedback/:id', requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM feedback WHERE id = ?').run(Number(req.params.id));
+  res.json({ ok: true });
 });
 
 // -------------------------------------------------------------- cold storage

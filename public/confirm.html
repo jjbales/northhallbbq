@@ -59,6 +59,7 @@ const pid = params.get('order');
       : `<div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--line)">
            <p class="small muted" style="margin:0 0 8px">Change of plans?</p>
            <button id="cancelOrder" class="btn ghost sm">Cancel this order</button>
+           <a class="btn ghost sm" id="sayLink" href="/gallery.html#fbCard">Leave a comment</a>
            <span id="cancelMsg" class="small" style="margin-left:10px"></span>
          </div>`}`;
 
@@ -76,6 +77,13 @@ const pid = params.get('order');
         `<span style="color:var(--bad)">${d.error || 'Could not cancel.'}</span>`;
     }
   });
+})();
+
+// point the comment form at this order so it lands with the right name on it
+(function () {
+  const l = document.getElementById('sayLink');
+  const id = new URLSearchParams(location.search).get('order');
+  if (l && id) l.href = `/gallery.html?order=${encodeURIComponent(id)}&say=1#fbCard`;
 })();
 </script>
 </body>

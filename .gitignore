@@ -7,3 +7,10 @@ __pycache__/
 
 # scratch folder the Claude desktop app creates
 Claude outputs/
+
+# macOS
+.DS_Store
+
+# Camera originals. They're big and they carry GPS -- only the stripped,
+# resized copies in public/photos get published.
+originals/

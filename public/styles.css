@@ -406,3 +406,58 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
 .pgroup .ishot{width:56px;height:56px;flex:0 0 auto;object-fit:cover;border-radius:9px;
   border:1px solid var(--line);background:#efece6}
 @media (max-width:520px){ .pgroup .ishot{width:46px;height:46px} }
+
+/* ---- the album ---------------------------------------------------------- */
+.site.slim{padding-bottom:26px}
+.site.slim .brandbar{align-items:center}
+.album{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.shot{position:relative;display:block;padding:0;border:1px solid var(--line);border-radius:12px;
+  overflow:hidden;background:#efece6;cursor:pointer;aspect-ratio:4/3}
+.shot img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
+.shot:hover img,.shot:focus-visible img{transform:scale(1.04)}
+.shot .cap{position:absolute;left:0;right:0;bottom:0;padding:16px 11px 8px;text-align:left;
+  color:#fff;font-size:13px;line-height:1.35;
+  background:linear-gradient(to top,rgba(9,18,12,.82),rgba(9,18,12,0))}
+.shot:focus-visible{outline:3px solid var(--ember-mid);outline-offset:2px}
+
+/* ---- lightbox ----------------------------------------------------------- */
+.light{position:fixed;inset:0;z-index:60;background:rgba(9,18,12,.96);
+  backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;padding:28px}
+/* display:flex beats the hidden attribute on its own, which leaves an
+   invisible sheet over the whole page swallowing every click */
+.light[hidden]{display:none}
+.light figure{margin:0;max-width:min(1100px,92vw);text-align:center}
+.light img{max-width:100%;max-height:78vh;border-radius:10px;display:block;margin:0 auto}
+.light figcaption{color:#e9e5dc;font-size:14px;margin-top:12px}
+.light .lclose{position:absolute;top:14px;right:18px;background:none;border:0;color:#fff;
+  font-size:38px;line-height:1;cursor:pointer;padding:4px 10px}
+.light .lnav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.1);
+  border:0;color:#fff;font-size:34px;line-height:1;cursor:pointer;padding:10px 16px;border-radius:8px}
+.light .lprev{left:14px} .light .lnext{right:14px}
+.light .lnav:hover{background:rgba(255,255,255,.2)}
+@media (max-width:560px){ .light{padding:12px} .light .lnav{font-size:26px;padding:8px 11px} }
+
+/* ---- ratings and what folks say ----------------------------------------- */
+.stars{display:flex;align-items:center;gap:3px}
+.stars button{background:none;border:0;font-size:27px;line-height:1;cursor:pointer;
+  color:#d7d2c7;padding:0 2px;transition:color .12s}
+.stars button.on,.stars button:hover{color:var(--ember-mid)}
+.stars #starNote{margin-left:10px}
+.srow{color:#d7d2c7;letter-spacing:1px}
+.srow .on{color:var(--ember-mid)}
+.said{margin:0 0 14px;padding:13px 15px;border:1px solid var(--line);border-left:4px solid var(--green);
+  border-radius:0 10px 10px 0;background:#fbfaf8}
+.said p{margin:6px 0 8px;line-height:1.55}
+.said cite{font-style:normal;font-weight:600;font-size:13.5px;color:var(--ink-soft)}
+.said .reply{margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);
+  font-size:13.5px;color:var(--ink-soft)}
+.trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+
+/* ---- featured strip on the shop page ------------------------------------ */
+.featstrip{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:14px}
+.feat{display:block;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+  background:#efece6;aspect-ratio:4/3}
+.feat img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
+.feat:hover img{transform:scale(1.05)}
+.navlinks{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
