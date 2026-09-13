@@ -137,6 +137,8 @@
     <div class="total"><span>Total</span><span id="total">$0.00</span></div>
     <div id="msg"></div>
     <button id="submit" class="btn" style="margin-top:14px;width:100%" disabled>Add something to your order</button>
+    <button id="startOver" class="btn ghost sm" type="button"
+            style="margin-top:10px;width:100%">Start over</button>
     <p class="small muted" id="payNote" style="text-align:center;margin-top:10px"></p>
   </section>
 
@@ -352,6 +354,19 @@ async function refresh() {
     renderSlots(); recalc();
   }
 }
+
+$('#startOver').addEventListener('click', () => {
+  for (const k of Object.keys(cart)) delete cart[k];
+  slotId = null;
+  contactPref = 'text';
+  document.querySelectorAll('#prefPills .pill').forEach(x =>
+    x.setAttribute('aria-pressed', x.dataset.pref === 'text'));
+  $('#remind').checked = true;
+  ['name', 'phone', 'email', 'notes'].forEach(id => { $('#' + id).value = ''; });
+  $('#msg').innerHTML = '';
+  renderProducts(); renderSlots(); recalc();
+  $('#orderPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 
 $('#prefPills').addEventListener('click', (e) => {
   const b = e.target.closest('.pill'); if (!b) return;

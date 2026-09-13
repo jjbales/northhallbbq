@@ -53,7 +53,29 @@ const pid = params.get('order');
     </table>
     <p style="margin-top:16px"><strong>Pickup:</strong> ${o.cook_date}${o.slot ? ', ' + o.slot : ''}<br>
     <span class="muted">The pickup address is in the confirmation I'll send you.</span></p>
-    <p class="small muted">Questions? ${[cfg.contact_phone, cfg.contact_email].filter(Boolean).join(' · ')}</p>`;
+    <p class="small muted">Questions? ${[cfg.contact_phone, cfg.contact_email].filter(Boolean).join(' · ')}</p>
+    ${o.status === 'cancelled'
+      ? '<div class="notice err" style="margin-top:16px"><strong>Cancelled.</strong> This order is no longer on the books.</div>'
+      : `<div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--line)">
+           <p class="small muted" style="margin:0 0 8px">Change of plans?</p>
+           <button id="cancelOrder" class="btn ghost sm">Cancel this order</button>
+           <span id="cancelMsg" class="small" style="margin-left:10px"></span>
+         </div>`}`;
+
+  const cb = document.getElementById('cancelOrder');
+  if (cb) cb.addEventListener('click', async () => {
+    if (!confirm('Cancel this order? Your butts go back up for someone else.')) return;
+    cb.disabled = true;
+    const r = await fetch(`/api/orders/${pid}/cancel`, { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) {
+      location.reload();
+    } else {
+      cb.disabled = false;
+      document.getElementById('cancelMsg').innerHTML =
+        `<span style="color:var(--bad)">${d.error || 'Could not cancel.'}</span>`;
+    }
+  });
 })();
 </script>
 </body>
