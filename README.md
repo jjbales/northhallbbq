@@ -110,10 +110,40 @@ editable under "Message wording".
   hand" drawer for the folks who just text you.
 - **Schedule a cook** — date, how many butts, what you paid per shoulder,
   other costs for the cook, pickup windows and how many handoffs fit in each.
+- **Supplies** — the pantry: wrap, pans, rub, fuel. You buy in bulk for the
+  business, not per cook, so this tracks what's on the shelf and what it cost.
+  See below.
 - **Menu & prices** — edit prices, add items (sauce, sides), set butt
   equivalents.
 - **Settings** — business name, pickup address, payment mode, yield, hold time.
   CSV export of every order lives at the bottom.
+
+## Supplies
+
+Wrap, pans, rub and fuel get bought in bulk and drawn down a cook at a time, so
+they live in their own pantry rather than being typed in per cook.
+
+Each item carries a unit (foot, pan, ounce, bag), how much is on hand, what it
+costs per unit, and how fast it goes: **per butt** scales with the size of the
+cook, **per cook** is flat however many go on the pit. Set *low at* and the tab
+tells you when you're getting close.
+
+**Logging a purchase** adds to stock and rolls into a running average cost. Buy
+150 ft of wrap for $18.99 and a second roll later for $24.99, and wrap costs
+$0.1466 a foot from then on — so a cook's numbers follow what you actually
+spent, not just the newest receipt.
+
+Costs per unit are kept fractional on purpose. Rounding a foot of wrap or an
+ounce of rub up to the nearest cent throws a cook off by a few percent.
+
+**Nothing comes off the shelf until you mark a cook cooked.** Up to that point
+every cook shows an estimate, so you can change the butt count freely. Hitting
+*Mark cooked* takes the supplies out of stock and writes the prices down with
+that cook, so an old cook keeps its real numbers when costs move later.
+*Reopen* puts it all back.
+
+Stock is allowed to go negative. That isn't an error — it means you cooked on
+supplies you hadn't logged buying yet, and logging the receipt squares it up.
 
 ## Putting it on northhallbbq.com
 

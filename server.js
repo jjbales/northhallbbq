@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 
 const { db, getSetting, setSetting, allSettings } = require('./lib/db');
 const { availability, priceCart, releaseExpiredHolds, ordersCloseAt, committedButts } = require('./lib/inventory');
+const { projectedUse, recordPurchase, consumeForCook, releaseForCook, suppliesForCook } = require('./lib/supplies');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -218,6 +219,31 @@ app.get('/api/orders/:publicId', (req, res) => {
   });
 });
 
+// Let a customer call off their own reservation -- but only while it's still
+// theirs to call off: not once it's paid, and not after orders close.
+app.post('/api/orders/:publicId/cancel', (req, res) => {
+  const o = db.prepare('SELECT * FROM orders WHERE public_id = ?').get(req.params.publicId);
+  if (!o) return res.status(404).json({ error: 'Order not found.' });
+
+  if (o.status === 'cancelled') return res.json({ ok: true, status: 'cancelled' });
+  if (o.status === 'paid' || o.status === 'picked_up') {
+    return res.status(409).json({
+      error: "That order's already paid, so I'd rather sort it out with you directly. Give me a call and I'll take care of it.",
+    });
+  }
+
+  const cook = db.prepare('SELECT * FROM cook_dates WHERE id = ?').get(o.cook_date_id);
+  const closeAt = ordersCloseAt(cook);
+  if (new Date(closeAt.replace(' ', 'T')) <= new Date()) {
+    return res.status(409).json({
+      error: "Orders for that date are closed and the pork's already bought. Call me and we'll work it out.",
+    });
+  }
+
+  db.prepare("UPDATE orders SET status='cancelled', hold_expires_at=NULL WHERE id=?").run(o.id);
+  res.json({ ok: true, status: 'cancelled' });
+});
+
 // Stripe returns the customer here; confirm payment actually happened.
 app.get('/api/orders/:publicId/confirm', async (req, res) => {
   const o = db.prepare('SELECT * FROM orders WHERE public_id = ?').get(req.params.publicId);
@@ -295,6 +321,85 @@ app.post('/api/admin/products', requireAdmin, (req, res) => {
   res.json(db.prepare('SELECT * FROM products ORDER BY sort_order, id').all());
 });
 
+// ------------------------------------------------------------------ supplies
+// The pantry: wrap, pans, rub, fuel. Bought in bulk for the business, drawn
+// down a cook at a time.
+app.get('/api/admin/supplies', requireAdmin, (req, res) => {
+  const rows = db.prepare('SELECT * FROM supplies ORDER BY sort_order, id').all().map((s) => ({
+    ...s,
+    low: s.active === 1 && s.low_at > 0 && s.on_hand <= s.low_at,
+    value_cents: Math.round(s.on_hand * s.unit_cost_cents),
+  }));
+  const purchases = db.prepare(
+    `SELECT p.*, s.name, s.unit FROM supply_purchases p
+     LEFT JOIN supplies s ON s.id = p.supply_id
+     ORDER BY p.id DESC LIMIT 25`
+  ).all();
+  res.json({ supplies: rows, purchases, value_cents: rows.reduce((a, b) => a + b.value_cents, 0) });
+});
+
+app.post('/api/admin/supplies', requireAdmin, (req, res) => {
+  try {
+    const { id, name, unit, per_butt, per_cook, low_at, on_hand, unit_cost_cents,
+            active, sort_order } = req.body || {};
+    if (!String(name || '').trim()) return res.status(400).json({ error: 'Give it a name.' });
+    const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+    if (id) {
+      // on_hand and unit cost are only set here when you're correcting a count;
+      // normally they move through purchases and cooks
+      db.prepare(
+        `UPDATE supplies SET name=?, unit=?, per_butt=?, per_cook=?, low_at=?,
+                on_hand=?, unit_cost_cents=?, active=?, sort_order=? WHERE id=?`
+      ).run(String(name).trim(), String(unit || 'unit').trim(), num(per_butt), num(per_cook),
+            num(low_at), num(on_hand), num(unit_cost_cents),
+            active === 0 || active === false ? 0 : 1, num(sort_order), Number(id));
+    } else {
+      db.prepare(
+        `INSERT INTO supplies (name, unit, on_hand, unit_cost_cents, per_butt, per_cook, low_at, active, sort_order)
+         VALUES (?,?,?,?,?,?,?,?,?)`
+      ).run(String(name).trim(), String(unit || 'unit').trim(), num(on_hand),
+            num(unit_cost_cents), num(per_butt), num(per_cook), num(low_at),
+            active === 0 || active === false ? 0 : 1, num(sort_order));
+    }
+    res.json(db.prepare('SELECT * FROM supplies ORDER BY sort_order, id').all());
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.delete('/api/admin/supplies/:id', requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM supplies WHERE id = ?').run(Number(req.params.id));
+  res.json({ ok: true });
+});
+
+// Logging a receipt. Quantity plus what you paid -- the running average cost
+// falls out of that, so cook costs follow what you actually spend.
+app.post('/api/admin/supplies/:id/purchase', requireAdmin, (req, res) => {
+  try {
+    const { qty, total_cents, note } = req.body || {};
+    const q = Number(qty);
+    if (!Number.isFinite(q) || q <= 0) return res.status(400).json({ error: 'How many did you buy?' });
+    const t = Number(total_cents);
+    if (!Number.isFinite(t) || t < 0) return res.status(400).json({ error: 'What did it cost?' });
+    res.json(recordPurchase(Number(req.params.id), q, t, note));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// What a cook this size would eat, and whether you're short.
+app.get('/api/admin/supplies/projected', requireAdmin, (req, res) => {
+  const butts = Number(req.query.butts) || 0;
+  const lines = projectedUse(butts);
+  res.json({
+    butts,
+    lines,
+    total_cents: lines.reduce((a, b) => a + b.total_cents, 0),
+    short: lines.filter((l) => l.short_by > 0),
+  });
+});
+
 app.post('/api/admin/cooks', requireAdmin, (req, res) => {
   try {
     const { id, cook_date, butts_total, butt_cost_cents, other_cost_cents,
@@ -318,6 +423,8 @@ app.post('/api/admin/cooks', requireAdmin, (req, res) => {
     }
 
     let cookId = id ? Number(id) : null;
+    const prior = cookId ? db.prepare('SELECT status FROM cook_dates WHERE id = ?').get(cookId) : null;
+    const nextStatus = status || (prior && prior.status) || 'open';
     if (cookId) {
       // don't let the total drop below what people have already bought
       const committed = committedButts(cookId);
@@ -330,13 +437,13 @@ app.post('/api/admin/cooks', requireAdmin, (req, res) => {
         `UPDATE cook_dates SET cook_date=?, butts_total=?, butt_cost_cents=?, other_cost_cents=?,
                 status=?, note=?, orders_close_at=? WHERE id=?`
       ).run(cook_date, total, Math.round(butt_cost_cents || 0), Math.round(other_cost_cents || 0),
-            status || 'open', note || '', orders_close_at || null, cookId);
+            nextStatus, note || '', orders_close_at || null, cookId);
     } else {
       const info = db.prepare(
         `INSERT INTO cook_dates (cook_date, butts_total, butt_cost_cents, other_cost_cents, status, note, orders_close_at)
          VALUES (?,?,?,?,?,?,?)`
       ).run(cook_date, total, Math.round(butt_cost_cents || 0), Math.round(other_cost_cents || 0),
-            status || 'open', note || '', orders_close_at || null);
+            nextStatus, note || '', orders_close_at || null);
       cookId = info.lastInsertRowid;
     }
 
@@ -371,7 +478,34 @@ app.post('/api/admin/cooks', requireAdmin, (req, res) => {
       }
     }
 
+    // --- supplies: stock comes out of inventory when the cook is marked done -
+    // Before that it's only an estimate, so nothing is deducted and you're free
+    // to change the butt count without the wrap and pans going out of step.
+    if (nextStatus === 'done') consumeForCook(cookId);
+    else releaseForCook(cookId);
+
     res.json(availability(cookId));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Open it back up, close orders, or call it done. Marking it done is what
+// takes the wrap, pans, rub and fuel out of the pantry.
+app.post('/api/admin/cooks/:id/status', requireAdmin, (req, res) => {
+  try {
+    const { status } = req.body || {};
+    if (!['open', 'closed', 'done'].includes(status)) {
+      return res.status(400).json({ error: 'Status has to be open, closed or done.' });
+    }
+    const cookId = Number(req.params.id);
+    const cook = db.prepare('SELECT id FROM cook_dates WHERE id = ?').get(cookId);
+    if (!cook) return res.status(404).json({ error: 'No such cook date.' });
+
+    db.prepare('UPDATE cook_dates SET status = ? WHERE id = ?').run(status, cookId);
+    if (status === 'done') consumeForCook(cookId);
+    else releaseForCook(cookId);
+    res.json({ ok: true, status });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
@@ -404,18 +538,24 @@ app.get('/api/admin/dashboard', requireAdmin, (req, res) => {
     const collected = booked.filter((o) => o.status === 'paid' || o.status === 'picked_up')
       .reduce((s, o) => s + o.total_cents, 0);
     const pork = Math.round(c.butt_cost_cents * c.butts_total);
-    const costs = pork + c.other_cost_cents;
+    // snapshot if the cook is closed out, running estimate if it hasn't happened
+    const sup = suppliesForCook(c.id, c.butts_total);
+    const costs = pork + c.other_cost_cents + sup.total_cents;
 
     return {
       ...c,
       availability: avail,
       orders,
+      supplies: sup.lines,
+      supplies_settled: sup.settled,
       money: {
         revenue_cents: revenue,
         collected_cents: collected,
         outstanding_cents: revenue - collected,
         pork_cost_cents: pork,
         other_cost_cents: c.other_cost_cents,
+        supplies_cents: sup.total_cents,
+        cost_per_butt_cents: c.butts_total > 0 ? Math.round(costs / c.butts_total) : 0,
         total_cost_cents: costs,
         profit_cents: revenue - costs,
         margin_pct: revenue > 0 ? Math.round(((revenue - costs) / revenue) * 100) : 0,
@@ -472,7 +612,8 @@ function renderMsg(tpl, o) {
     .replace(/{items}/g, items)
     .replace(/{total}/g, '$' + money(o.total_cents))
     .replace(/{order}/g, o.public_id)
-    .replace(/{address}/g, getSetting('pickup_address') || '');
+    .replace(/{address}/g, getSetting('pickup_address') || '')
+    .replace(/{link}/g, `${BASE_URL}/confirm.html?order=${o.public_id}`);
 }
 
 // Who needs a confirmation or a reminder, with the message already written.

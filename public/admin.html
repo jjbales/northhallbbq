@@ -48,6 +48,7 @@
       <button data-tab="cooks" aria-selected="true">Cooks &amp; orders</button>
       <button data-tab="new" aria-selected="false">Schedule a cook</button>
       <button data-tab="msgs" aria-selected="false">Confirmations &amp; reminders</button>
+      <button data-tab="supplies" aria-selected="false">Supplies</button>
       <button data-tab="menu" aria-selected="false">Menu &amp; prices</button>
       <button data-tab="settings" aria-selected="false">Settings</button>
     </div>
@@ -62,12 +63,17 @@
       </div>
       <div class="row">
         <div class="field"><label for="nCost">What you paid per shoulder ($)</label><input id="nCost" type="number" min="0" step="0.01" placeholder="e.g. 18.40"></div>
-        <div class="field"><label for="nOther">Other costs for the cook ($)</label><input id="nOther" type="number" min="0" step="0.01" placeholder="wood, rub, foil, pans"></div>
+        <div class="field"><label for="nOther">Other costs for the cook ($)</label><input id="nOther" type="number" min="0" step="0.01" placeholder="ice, gloves, anything one-off"></div>
       </div>
       <div class="row">
         <div class="field"><label for="nClose">Orders close</label><input id="nClose" type="datetime-local"></div>
         <div class="field"><label for="nNote">Note shown to customers (optional)</label><input id="nNote" type="text" placeholder="Pickup at the shop, cash or card"></div>
       </div>
+      <h3 style="font-size:16px;margin-top:8px">What this cook will pull from the pantry</h3>
+      <p class="small muted" style="margin-top:-4px">Worked out from the usage you set on the
+      Supplies tab. Nothing comes out of stock until you mark the cook done.</p>
+      <div id="supplyPreview" class="small muted">Put in a butt count to see it.</div>
+
       <h3 style="font-size:16px;margin-top:8px">Pickup windows</h3>
       <div id="slotRows"></div>
       <button class="btn ghost sm" id="addSlot" type="button">+ Add window</button>
@@ -92,6 +98,41 @@
       </details>
     </section>
 
+    <section id="tab-supplies" class="hide">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:baseline">
+          <h2 style="margin:0">What's on the shelf</h2>
+          <span class="small muted" id="supValue"></span>
+        </div>
+        <p class="small muted">Buy in bulk, log the receipt, and every cook prices itself off what you
+        actually paid. "Per butt" and "per cook" are how fast it goes.</p>
+        <div id="supLow"></div>
+        <div style="overflow-x:auto"><div id="supTable"></div></div>
+        <button class="btn ghost sm" id="addSupplyItem" type="button" style="margin-top:10px">+ Add an item</button>
+        <button class="btn sm" id="saveSupplies" style="margin-top:10px">Save the shelf</button>
+        <span class="small muted" id="supMsg" style="margin-left:8px"></span>
+      </div>
+
+      <div class="card">
+        <h2>Log a purchase</h2>
+        <p class="small muted" style="margin-top:-6px">Adds to stock and rolls into the average cost.</p>
+        <div class="row" style="align-items:flex-end">
+          <div class="field" style="flex:1 1 180px"><label for="buySupply">Item</label>
+            <select id="buySupply"></select></div>
+          <div class="field" style="flex:0 0 130px"><label for="buyQty">How many</label>
+            <input id="buyQty" type="number" min="0" step="0.01"></div>
+          <div class="field" style="flex:0 0 140px"><label for="buyCost">What you paid ($)</label>
+            <input id="buyCost" type="number" min="0" step="0.01"></div>
+          <div class="field" style="flex:1 1 160px"><label for="buyNote">Where from (optional)</label>
+            <input id="buyNote" type="text" placeholder="Sam's, restaurant supply"></div>
+          <div class="field" style="flex:0 0 auto"><button class="btn sm" id="logPurchase" type="button">Log it</button></div>
+        </div>
+        <div id="buyMsg"></div>
+        <h3 style="font-size:15px;margin-top:20px">Recent receipts</h3>
+        <div id="purchaseList" class="small muted"></div>
+      </div>
+    </section>
+
     <section id="tab-menu" class="card hide">
       <h2>Menu &amp; prices</h2>
       <p class="small muted" style="margin-top:-6px">“Butt equivalent” is how much of one whole shoulder a single unit uses up. That's what drives the countdown.</p>
@@ -111,7 +152,7 @@
 
 <script>
 const $ = (s, r = document) => r.querySelector(s);
-const money = c => '$' + (c / 100).toFixed(2);
+const money = c => (c < 0 ? '-$' : '$') + (Math.abs(c) / 100).toFixed(2);
 const cents = v => Math.round(Number(v || 0) * 100);
 let DATA = { cooks: [], settings: {} };
 
@@ -135,7 +176,7 @@ const post = (url, body) => api(url, {
 $('#tabs').addEventListener('click', e => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
   document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
-  ['cooks', 'new', 'msgs', 'menu', 'settings'].forEach(t =>
+  ['cooks', 'new', 'msgs', 'supplies', 'menu', 'settings'].forEach(t =>
     $('#tab-' + t).classList.toggle('hide', t !== b.dataset.tab));
 });
 
@@ -188,6 +229,9 @@ function cookBlock(c) {
       </div>
       <div class="row" style="gap:6px">
         <button class="btn sm ghost" data-edit="${c.id}">Edit</button>
+        ${c.status === 'done'
+          ? `<button class="btn sm ghost" data-cookstatus="${c.id}" data-to="open">Reopen</button>`
+          : `<button class="btn sm ghost" data-cookstatus="${c.id}" data-to="done">Mark cooked</button>`}
         <button class="btn sm ghost" data-del="${c.id}">Delete</button>
       </div>
     </div>
@@ -200,7 +244,15 @@ function cookBlock(c) {
       <div class="kpi ${m.profit_cents >= 0 ? 'good' : 'bad'}"><b>${money(m.profit_cents)}</b><small>profit (${m.margin_pct}%)</small></div>
     </div>
     ${m.outstanding_cents > 0 ? `<p class="small" style="color:var(--warn)">${money(m.outstanding_cents)} still to collect.</p>` : ''}
-    <p class="small muted">Pork ${money(c.butt_cost_cents)}/shoulder × ${c.butts_total} = ${money(m.pork_cost_cents)}${c.other_cost_cents ? ` + ${money(c.other_cost_cents)} other` : ''}. Break even at ${m.breakeven_butts} butt(s) sold.</p>
+    <div class="small muted" style="line-height:1.7">
+      <div>Pork ${money(c.butt_cost_cents)}/shoulder × ${c.butts_total} = <strong>${money(m.pork_cost_cents)}</strong></div>
+      ${(c.supplies || []).map(x => `<div>${x.label} ${fmtQty(x.qty)} ${x.unit} × $${(x.unit_cost_cents / 100).toFixed(4).replace(/0+$/, '').replace(/\.$/, '.00')} = <strong>${money(x.total_cents)}</strong>${x.short_by > 0 ? ` <span style="color:var(--warn)">· ${fmtQty(x.short_by)} ${x.unit} short</span>` : ''}</div>`).join('')}
+      ${(c.supplies || []).length ? `<div class="muted">${c.supplies_settled ? 'Supplies came out of stock when you marked this cook done.' : 'Estimated from the pantry — nothing off the shelf yet.'}</div>` : ''}
+      ${c.other_cost_cents ? `<div>Other = <strong>${money(c.other_cost_cents)}</strong></div>` : ''}
+      <div style="border-top:1px solid var(--line);margin-top:5px;padding-top:5px">
+        All in: <strong>${money(m.total_cost_cents)}</strong> — that's <strong>${money(m.cost_per_butt_cents)}</strong> a butt.
+        Break even at ${m.breakeven_butts} butt(s) sold.</div>
+    </div>
     ${c.orders.length ? `<div style="overflow-x:auto"><table>
       <tr><th>Customer</th><th>Order</th><th>Pickup</th><th>Total</th><th>Status</th><th></th></tr>
       ${c.orders.map(orderRow).join('')}</table></div>`
@@ -247,6 +299,17 @@ function render() {
     }));
   $('#cookList').querySelectorAll('button[data-edit]').forEach(b =>
     b.addEventListener('click', () => editCook(Number(b.dataset.edit))));
+  $('#cookList').querySelectorAll('button[data-cookstatus]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const done = b.dataset.to === 'done';
+      if (!confirm(done
+        ? "Mark this cook done? The wrap, pans, rub and fuel it used come off the shelf."
+        : 'Reopen this cook? The supplies it used go back on the shelf.')) return;
+      try {
+        await post(`/api/admin/cooks/${b.dataset.cookstatus}/status`, { status: b.dataset.to });
+        await load(); await loadSupplies();
+      } catch (e) { alert(e.message); }
+    }));
   $('#cookList').querySelectorAll('button[data-manual]').forEach(b =>
     b.addEventListener('click', async () => {
       const id = b.dataset.manual;
@@ -273,6 +336,7 @@ function editCook(id) {
   $('#nNote').value = c.note || '';
   $('#nClose').value = c.orders_close_at ? c.orders_close_at.replace(' ', 'T').slice(0, 16) : '';
   slotRows = c.availability.slots.map(s => ({ start: s.start_time, end: s.end_time, cap: s.capacity }));
+  previewSupplies();
   editingId = id;
   renderSlotRows();
   $('#saveCook').textContent = 'Save changes';
@@ -282,6 +346,123 @@ function editCook(id) {
 
 /* -------------------------------------------------------- new cook form */
 let editingId = null;
+
+// Live read-out of what a cook this size would take off the shelf.
+let supplyPreviewTimer = null;
+function previewSupplies() {
+  clearTimeout(supplyPreviewTimer);
+  supplyPreviewTimer = setTimeout(async () => {
+    const butts = Number($('#nButts').value) || 0;
+    const box = $('#supplyPreview');
+    if (!butts) { box.innerHTML = 'Put in a butt count to see it.'; return; }
+    try {
+      const d = await api('/api/admin/supplies/projected?butts=' + butts);
+      if (!d.lines.length) { box.innerHTML = 'Nothing set up on the Supplies tab yet.'; return; }
+      box.innerHTML = d.lines.map(l =>
+        `<div>${l.label} — ${fmtQty(l.qty)} ${l.unit} ` +
+        (l.unit_cost_cents ? `= <strong>${money(l.total_cents)}</strong>` : '<em>(no cost logged yet)</em>') +
+        (l.short_by > 0 ? ` <span style="color:var(--warn)">· short ${fmtQty(l.short_by)} ${l.unit}</span>` : '') +
+        `</div>`).join('') +
+        `<div style="border-top:1px solid var(--line);margin-top:5px;padding-top:5px">Supplies: <strong>${money(d.total_cents)}</strong></div>`;
+    } catch (e) { box.innerHTML = ''; }
+  }, 250);
+}
+$('#nButts').addEventListener('input', previewSupplies);
+
+/* ------------------------------------------------------------- supplies */
+const fmtQty = n => (Math.round(n * 100) / 100).toString();
+let SUP = { supplies: [], purchases: [], value_cents: 0 };
+
+async function loadSupplies() {
+  SUP = await api('/api/admin/supplies');
+  renderSupplies();
+}
+
+function renderSupplies() {
+  $('#supValue').textContent = SUP.value_cents ? money(SUP.value_cents) + ' sitting on the shelf' : '';
+
+  const low = SUP.supplies.filter(s => s.low);
+  $('#supLow').innerHTML = low.length
+    ? `<div class="notice err"><strong>Running low:</strong> ${low.map(s => `${s.name} (${fmtQty(s.on_hand)} ${s.unit} left)`).join(', ')}</div>`
+    : '';
+
+  $('#supTable').innerHTML = `<table>
+    <tr><th>Item</th><th>Unit</th><th>On hand</th><th>Cost each</th><th>Per butt</th><th>Per cook</th><th>Low at</th><th></th></tr>
+    ${SUP.supplies.map((s, i) => `<tr${s.active ? '' : ' style="opacity:.5"'}>
+      <td><input type="text" style="min-width:110px" value="${(s.name || '').replace(/"/g, '&quot;')}" data-sx="${i}" data-f="name"></td>
+      <td><input type="text" style="width:70px" value="${(s.unit || '').replace(/"/g, '&quot;')}" data-sx="${i}" data-f="unit"></td>
+      <td><input type="number" step="0.01" style="width:80px" value="${s.on_hand}" data-sx="${i}" data-f="on_hand"></td>
+      <td><input type="number" step="0.0001" min="0" style="width:95px" value="${+(s.unit_cost_cents / 100).toFixed(4)}" data-sx="${i}" data-f="cost"></td>
+      <td><input type="number" step="0.01" min="0" style="width:75px" value="${s.per_butt}" data-sx="${i}" data-f="per_butt"></td>
+      <td><input type="number" step="0.01" min="0" style="width:75px" value="${s.per_cook}" data-sx="${i}" data-f="per_cook"></td>
+      <td><input type="number" step="0.01" min="0" style="width:75px" value="${s.low_at}" data-sx="${i}" data-f="low_at"></td>
+      <td><button class="btn ghost sm" type="button" data-sxrm="${i}">Remove</button></td>
+    </tr>`).join('')}
+  </table>`;
+
+  $('#supTable').querySelectorAll('[data-sx]').forEach(el =>
+    el.addEventListener('input', () => {
+      const s = SUP.supplies[el.dataset.sx], f = el.dataset.f;
+      if (f === 'name' || f === 'unit') s[f] = el.value;
+      else if (f === 'cost') s.unit_cost_cents = Number(el.value || 0) * 100;
+      else s[f] = Number(el.value);
+    }));
+  $('#supTable').querySelectorAll('[data-sxrm]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const s = SUP.supplies[b.dataset.sxrm];
+      if (s.id && !confirm(`Take ${s.name} off the list?`)) return;
+      if (s.id) await api('/api/admin/supplies/' + s.id, { method: 'DELETE' });
+      else SUP.supplies.splice(Number(b.dataset.sxrm), 1);
+      s.id ? await loadSupplies() : renderSupplies();
+    }));
+
+  $('#buySupply').innerHTML = SUP.supplies.filter(s => s.id)
+    .map(s => `<option value="${s.id}">${s.name} (${s.unit})</option>`).join('');
+
+  $('#purchaseList').innerHTML = SUP.purchases.length
+    ? SUP.purchases.map(p => `<div>${p.purchased_at.slice(0, 10)} — ${fmtQty(p.qty)} ${p.unit || ''}
+        ${p.name || '(removed)'} for <strong>${money(p.total_cents)}</strong>${p.note ? ' · ' + p.note : ''}</div>`).join('')
+    : '<div>No receipts logged yet.</div>';
+}
+
+$('#addSupplyItem').addEventListener('click', () => {
+  SUP.supplies.push({ name: '', unit: 'unit', on_hand: 0, unit_cost_cents: 0,
+                      per_butt: 0, per_cook: 0, low_at: 0, active: 1 });
+  renderSupplies();
+});
+
+$('#saveSupplies').addEventListener('click', async () => {
+  try {
+    for (const [i, s] of SUP.supplies.entries()) {
+      if (!(s.name || '').trim()) continue;
+      await post('/api/admin/supplies', { ...s, sort_order: i });
+    }
+    await loadSupplies();
+    $('#supMsg').textContent = 'Saved.';
+    setTimeout(() => $('#supMsg').textContent = '', 2500);
+    await load();
+  } catch (e) {
+    $('#supMsg').innerHTML = `<span style="color:var(--warn)">${e.message}</span>`;
+  }
+});
+
+$('#logPurchase').addEventListener('click', async () => {
+  try {
+    await post(`/api/admin/supplies/${$('#buySupply').value}/purchase`, {
+      qty: Number($('#buyQty').value),
+      total_cents: cents($('#buyCost').value),
+      note: $('#buyNote').value,
+    });
+    $('#buyQty').value = ''; $('#buyCost').value = ''; $('#buyNote').value = '';
+    $('#buyMsg').innerHTML = '<div class="notice ok">Logged.</div>';
+    setTimeout(() => $('#buyMsg').innerHTML = '', 2500);
+    await loadSupplies();
+    await load();
+  } catch (e) {
+    $('#buyMsg').innerHTML = `<div class="notice err">${e.message}</div>`;
+  }
+});
+
 let slotRows = [{ start: '11:00', end: '12:00', cap: 6 }, { start: '12:00', end: '13:00', cap: 6 }];
 
 function to12(t) {
@@ -495,6 +676,7 @@ $('#saveSettings').addEventListener('click', async () => {
 async function load() {
   DATA = await api('/api/admin/dashboard');
   render(); renderSettings(); renderMenu(); renderMessages();
+  loadSupplies().catch(() => {});
 }
 renderSlotRows();
 checkAuth();
