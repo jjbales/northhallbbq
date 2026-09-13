@@ -83,7 +83,7 @@
     </div>
     <div class="trust">
       <div><b>2014</b>Cooking since</div>
-      <div><b>1&nbsp;&ndash;&nbsp;1000</b>Butts per cook</div>
+      <div><b>1&nbsp;&ndash;&nbsp;1000</b>Off the pit per cook</div>
       <div><b>LOCAL</b>Gainesville pickup</div>
       <div><b>FUNDRAISERS</b>Churches &middot; schools &middot; teams &middot; non-profits</div>
     </div>
@@ -93,7 +93,7 @@
 <main class="wrap">
   <section class="card">
     <h2>Pick a cook date</h2>
-    <p class="muted small" style="margin-top:-6px">Each cook is a fixed number of butts. When they're gone, they're gone.</p>
+    <p class="muted small" style="margin-top:-6px">Each cook is a set number off the pit. When they're gone, they're gone.</p>
     <div id="cooks" class="grid cooks" style="margin-top:14px">
       <p class="muted">Loading cook dates…</p>
     </div>
@@ -213,22 +213,36 @@ function countdownParts(closeAt) {
            m: Math.floor(s / 60) % 60, s: s % 60 };
 }
 
+function pieceWord(p, n) { return n === 1 ? p.piece : p.pieces; }
+
 function cookCard(c) {
-  const left = c.whole_butts_available;
+  const live = c.proteins.filter(p => p.total > 0);
+  const openLeft = live.filter(p => !p.sold_out).reduce((a, p) => a + p.whole_available, 0);
   const badge = c.sold_out ? '<span class="badge out">Sold out</span>'
     : c.closed ? '<span class="badge grey">Orders closed</span>'
-    : left <= 2 ? `<span class="badge low">Only ${left} left</span>`
+    : openLeft <= 2 ? `<span class="badge low">Almost gone</span>`
     : '<span class="badge open">Taking orders</span>';
+
+  // Each protein counts down on its own, so you can see at a glance that the
+  // brisket is gone but there's still pork on the pit.
+  const counters = live.map(p => `
+    <div class="pcount ${p.sold_out ? 'out' : ''}">
+      <div class="prow">
+        <span class="pname">${p.name}</span>
+        <span class="pleft">${p.sold_out ? 'Sold out'
+          : `<b>${p.whole_available}</b> ${pieceWord(p, p.whole_available)} left`}</span>
+      </div>
+      <div class="bar"><span style="width:${p.percent_sold}%"></span></div>
+      ${p.yield_lbs > 0 && !p.sold_out
+        ? `<div class="psub">or about ${p.lbs_available} lbs</div>` : ''}
+    </div>`).join('');
+
   return `
     <button class="cook ${c.sold_out || c.closed ? 'sold' : ''}" data-id="${c.cook_date_id}"
             aria-pressed="${cookId === c.cook_date_id}" ${c.sold_out || c.closed ? 'disabled' : ''}>
       <div class="date">${fmtDate(c.cook_date)}</div>
       ${badge}
-      <div class="counter">
-        <span class="n">${left}</span>
-        <span class="of">of ${c.butts_total} butts left${c.lbs_available ? ` · ~${c.lbs_available} lbs` : ''}</span>
-      </div>
-      <div class="bar"><span style="width:${c.percent_sold}%"></span></div>
+      <div class="pcounts">${counters}</div>
       ${c.note ? `<p class="small muted" style="margin:10px 0 0">${c.note}</p>` : ''}
       <div class="clock" data-close="${c.orders_close_at}"></div>
     </button>`;
@@ -259,22 +273,47 @@ function renderCooks() {
 function currentCook() { return COOKS.find(c => c.cook_date_id === cookId); }
 
 function renderProducts() {
-  $('#products').innerHTML = PRODUCTS.map(p => `
-    <div class="item">
-      <div>
-        <div><strong>${p.name}</strong></div>
-        <div class="small muted">${p.description || ''}</div>
+  const c = currentCook();
+  const onPit = new Set((c ? c.proteins : []).filter(p => p.total > 0).map(p => p.protein_id));
+  const groups = [];
+  for (const p of PRODUCTS) {
+    if (!onPit.has(p.protein_id)) continue;      // not on the pit that day
+    let g = groups.find(x => x.protein_id === p.protein_id);
+    if (!g) {
+      g = { protein_id: p.protein_id, name: p.protein_name,
+            line: c.proteins.find(x => x.protein_id === p.protein_id), items: [] };
+      groups.push(g);
+    }
+    g.items.push(p);
+  }
+
+  $('#products').innerHTML = groups.map(g => `
+    <div class="pgroup ${g.line && g.line.sold_out ? 'out' : ''}">
+      <div class="ghead">
+        <span>${g.name}</span>
+        <span class="small">${g.line && g.line.sold_out ? 'Sold out'
+          : `${g.line.whole_available} ${pieceWord(g.line, g.line.whole_available)} left`}</span>
       </div>
-      <div class="row" style="align-items:center;gap:14px;flex-wrap:nowrap">
-        <div class="price">${money(p.price_cents)}${p.unit === 'lb' ? ' / lb' : ''}</div>
-        <div class="qty">
-          <button type="button" data-step="-1" data-slug="${p.slug}" aria-label="less">−</button>
-          <input type="number" min="0" step="${p.unit === 'lb' ? '0.5' : '1'}" value="0"
-                 data-slug="${p.slug}" inputmode="decimal">
-          <button type="button" data-step="1" data-slug="${p.slug}" aria-label="more">+</button>
-        </div>
-      </div>
-    </div>`).join('');
+      ${g.items.map(p => `
+        <div class="item">
+          <div>
+            <div><strong>${p.name}</strong></div>
+            <div class="small muted">${p.description || ''}</div>
+          </div>
+          <div class="row" style="align-items:center;gap:14px;flex-wrap:nowrap">
+            <div class="price">${money(p.price_cents)}${p.unit === 'lb' ? ' / lb' : ''}</div>
+            <div class="qty">
+              <button type="button" data-step="-1" data-slug="${p.slug}" aria-label="less"
+                ${g.line && g.line.sold_out ? 'disabled' : ''}>&minus;</button>
+              <input type="number" min="0" step="${p.unit === 'lb' ? '0.5' : '1'}"
+                     value="${cart[p.slug] || 0}" data-slug="${p.slug}" inputmode="decimal"
+                     ${g.line && g.line.sold_out ? 'disabled' : ''}>
+              <button type="button" data-step="1" data-slug="${p.slug}" aria-label="more"
+                ${g.line && g.line.sold_out ? 'disabled' : ''}>+</button>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>`).join('') || '<p class="muted">Nothing on the pit for that date yet.</p>';
 
   $('#products').querySelectorAll('button[data-step]').forEach(b =>
     b.addEventListener('click', () => {
@@ -283,7 +322,6 @@ function renderProducts() {
       inp.value = Math.max(0, Math.round((Number(inp.value) + step) * 100) / 100);
       inp.dispatchEvent(new Event('input'));
     }));
-  $('#email').addEventListener('input', recalc, { once: false });
   $('#products').querySelectorAll('input[data-slug]').forEach(i =>
     i.addEventListener('input', () => { cart[i.dataset.slug] = Number(i.value) || 0; recalc(); }));
 }
@@ -306,21 +344,32 @@ function renderSlots() {
 function recalc() {
   const c = currentCook();
   if (!c) return;
-  let total = 0, equiv = 0;
+  let total = 0, any = 0;
+  const want = {};                       // protein_id -> pieces this cart eats
   for (const p of PRODUCTS) {
     const q = cart[p.slug] || 0;
+    if (q <= 0) continue;
     total += p.price_cents * q;
-    equiv += p.butt_equiv * q;
+    any += q;
+    want[p.protein_id] = (want[p.protein_id] || 0) + p.piece_equiv * q;
   }
   $('#total').textContent = money(total);
 
   const btn = $('#submit'), msg = $('#msg');
   msg.innerHTML = '';
-  if (equiv <= 0) { btn.disabled = true; btn.textContent = 'Add something to your order'; return; }
-  if (equiv > c.butts_remaining + 1e-9) {
-    msg.innerHTML = `<div class="notice err">That's more than I have left for ${fmtDate(c.cook_date)} — ${c.whole_butts_available} whole butt(s) / about ${c.lbs_available} lbs still open.</div>`;
-    btn.disabled = true; btn.textContent = 'Too much for this date';
-    return;
+  if (any <= 0) { btn.disabled = true; btn.textContent = 'Add something to your order'; return; }
+
+  // Tell them which one is over, not just that something is.
+  for (const [pid, pieces] of Object.entries(want)) {
+    const line = c.proteins.find(x => x.protein_id === Number(pid));
+    if (!line) continue;
+    if (pieces > line.remaining + 1e-9) {
+      msg.innerHTML = `<div class="notice err">That's more ${line.name.toLowerCase()} than I have for
+        ${fmtDate(c.cook_date)} — ${line.whole_available} ${pieceWord(line, line.whole_available)}${line.yield_lbs > 0
+          ? ` (about ${line.lbs_available} lbs)` : ''} still open.</div>`;
+      btn.disabled = true; btn.textContent = `Too much ${line.name.toLowerCase()} for this date`;
+      return;
+    }
   }
   if (c.slots.length && !slotId) { btn.disabled = true; btn.textContent = 'Pick a pickup window'; return; }
   if ((contactPref === 'email' || contactPref === 'both') && !$('#email').value.trim()) {
@@ -332,12 +381,20 @@ function recalc() {
     : `Reserve ${money(total)} — pay at pickup`;
 }
 
+function availLine(c) {
+  const live = c.proteins.filter(p => p.total > 0);
+  if (!live.length) return `<strong>${fmtDate(c.cook_date)}</strong> — nothing on the pit yet.`;
+  const bits = live.map(p => p.sold_out
+    ? `${p.name.toLowerCase()} sold out`
+    : `${p.whole_available} ${pieceWord(p, p.whole_available)} of ${p.name.toLowerCase()}`);
+  return `<strong>${fmtDate(c.cook_date)}</strong> — ${bits.join(', ')} left.`;
+}
+
 function selectCook(id) {
   cookId = id; slotId = null;
   const c = currentCook();
   $('#orderPanel').classList.remove('hide');
-  $('#availLine').innerHTML =
-    `<strong>${fmtDate(c.cook_date)}</strong> — ${c.whole_butts_available} whole butt${c.whole_butts_available === 1 ? '' : 's'} left (about ${c.lbs_available} lbs of pulled pork).`;
+  $('#availLine').innerHTML = availLine(c);
   renderProducts(); renderSlots(); recalc();
   document.querySelectorAll('.cook').forEach(b =>
     b.setAttribute('aria-pressed', Number(b.dataset.id) === id));
@@ -349,9 +406,8 @@ async function refresh() {
   renderCooks();
   if (cookId && currentCook()) {
     const c = currentCook();
-    $('#availLine').innerHTML =
-      `<strong>${fmtDate(c.cook_date)}</strong> — ${c.whole_butts_available} whole butt${c.whole_butts_available === 1 ? '' : 's'} left (about ${c.lbs_available} lbs of pulled pork).`;
-    renderSlots(); recalc();
+    $('#availLine').innerHTML = availLine(c);
+    renderProducts(); renderSlots(); recalc();
   }
 }
 
@@ -402,6 +458,8 @@ $('#submit').addEventListener('click', async () => {
   }
 });
 
+$('#email').addEventListener('input', recalc);
+
 (async function init() {
   CFG = await api('/api/config');
   PRODUCTS = await api('/api/products');
@@ -431,7 +489,7 @@ $('#submit').addEventListener('click', async () => {
   }
   $('#payNote').textContent =
     CFG.payment_mode === 'stripe' ? 'Secure card checkout. Your butt is held while you pay.'
-    : CFG.payment_mode === 'cheddarup' ? 'Your butt is held the moment you reserve. Payment link comes next.'
+    : CFG.payment_mode === 'cheddarup' ? 'Your order is held the moment you reserve. Payment link comes next.'
     : 'No payment up front — reserve now, settle up at pickup.';
   await refresh();
   setInterval(tickClocks, 1000);

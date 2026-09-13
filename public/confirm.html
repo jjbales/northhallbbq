@@ -35,7 +35,7 @@ const pid = params.get('order');
     o.status === 'paid' || o.status === 'picked_up'
       ? '<div class="notice ok"><strong>Paid.</strong> Nothing else to do — just come get it.</div>'
       : cfg.payment_mode === 'cheddarup' && cfg.cheddarup_url
-        ? `<div class="notice info"><strong>Your butt is held.</strong> Finish up on Cheddar Up to lock it in.</div>
+        ? `<div class="notice info"><strong>Your order is held.</strong> Finish up on Cheddar Up to lock it in.</div>
            <a class="btn" style="width:100%;margin-bottom:8px" href="${cfg.cheddarup_url}" target="_blank" rel="noopener">Pay ${money(o.total_cents)} on Cheddar Up</a>
            <p class="small muted">Put order <strong>#${o.public_id}</strong> in the notes so I can match it up.</p>`
         : `<div class="notice info"><strong>Reserved.</strong> Pay ${money(o.total_cents)} at pickup — cash, card or Venmo.</div>`;
@@ -64,7 +64,7 @@ const pid = params.get('order');
 
   const cb = document.getElementById('cancelOrder');
   if (cb) cb.addEventListener('click', async () => {
-    if (!confirm('Cancel this order? Your butts go back up for someone else.')) return;
+    if (!confirm('Cancel this order? What you reserved goes back up for someone else.')) return;
     cb.disabled = true;
     const r = await fetch(`/api/orders/${pid}/cancel`, { method: 'POST' });
     const d = await r.json().catch(() => ({}));

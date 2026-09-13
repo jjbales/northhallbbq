@@ -39,21 +39,33 @@ SQLite file. Back that file up and you've backed up the business.
 
 ## How the countdown works
 
-Everything is measured in **butt equivalents**:
+Three things go on the pit, and each counts down on its own:
 
-| Item | Butt equivalent |
-|---|---|
-| Whole Boston Butt | 1.0 |
-| Pulled pork, per lb | 1 ÷ (lbs per butt) — 0.2 at the default 5 lbs |
-| Sauce, sides, anything off-pig | 0 |
+| | one piece | also sold by the pound |
+|---|---|---|
+| **Pork** | a Boston butt | yes, at the yield in Settings |
+| **Brisket** | a whole packer | yes |
+| **Chicken** | a spatchcocked bird | no — whole birds only |
 
-So if you put 8 butts on and someone buys 2 whole plus 3 lbs pulled, that's
-2.6 butts gone and 5.4 left. The public page shows whole butts available and
-approximate pounds. Change "pounds of pulled pork per butt" in Settings if
-your yield runs different and the math follows.
+Every menu item belongs to one of them and eats a **portion of one piece**: a
+whole butt is 1.0, a pound of pulled pork is 1/yield. Sell 4 lbs of pulled pork
+off a 4.5 lb yield and 0.89 of a butt is gone. That's what makes the numbers on
+the page move.
 
-A cook stops taking orders when it sells out, when you close it, or at the
-"orders close" time you set (default 6:00 AM the morning of).
+Because the pools are separate, selling out of brisket doesn't touch the pork.
+The shop groups the menu by protein and shows each one's count above its items;
+a group that's gone greys out and its inputs go dead, while everything else
+keeps taking orders. The whole cook only reads "sold out" when there's nothing
+left of anything.
+
+Nothing can be oversold. The check runs protein by protein at the API, inside
+the same transaction that writes the order, so a mixed order that's short on
+just one thing is refused whole — the pork isn't quietly taken while the brisket
+fails.
+
+Brisket and chicken ship **switched off with no price**. Set your own prices
+under Menu & prices and flip them Active; an item priced at $0 stays off the
+shop no matter what Active says.
 
 ## Holds
 
@@ -108,13 +120,14 @@ editable under "Message wording".
   collected, your cost, and profit. Mark orders paid / picked up / cancelled.
   Cancelling puts the butt back on the board. There's also a "add an order by
   hand" drawer for the folks who just text you.
-- **Schedule a cook** — date, how many butts, what you paid per shoulder,
-  other costs for the cook, pickup windows and how many handoffs fit in each.
+- **Schedule a cook** — date, how many of each protein and what you paid per
+  piece, other costs, pickup windows and how many handoffs fit in each. Leave a
+  count at zero and it stays off that cook.
 - **Supplies** — the pantry: wrap, pans, rub, fuel. You buy in bulk for the
   business, not per cook, so this tracks what's on the shelf and what it cost.
   See below.
-- **Menu & prices** — edit prices, add items (sauce, sides), set butt
-  equivalents.
+- **Menu & prices** — edit prices, add items (sauce, sides), set what each item
+  comes off and what portion of one it eats.
 - **Settings** — business name, pickup address, payment mode, yield, hold time.
   CSV export of every order lives at the bottom.
 
@@ -124,9 +137,11 @@ Wrap, pans, rub and fuel get bought in bulk and drawn down a cook at a time, so
 they live in their own pantry rather than being typed in per cook.
 
 Each item carries a unit (foot, pan, ounce, bag), how much is on hand, what it
-costs per unit, and how fast it goes: **per butt** scales with the size of the
-cook, **per cook** is flat however many go on the pit. Set *low at* and the tab
-tells you when you're getting close.
+costs per unit, and how fast it goes. Usage is set **per protein** — a brisket
+takes more wrap than a butt and a chicken takes none — plus a **per cook**
+figure for anything flat, like a bag of charcoal. Leave a column at zero if a
+supply doesn't apply to that protein. Set *low at* and the tab tells you when
+you're getting close.
 
 **Logging a purchase** adds to stock and rolls into a running average cost. Buy
 150 ft of wrap for $18.99 and a second roll later for $24.99, and wrap costs
@@ -136,11 +151,27 @@ spent, not just the newest receipt.
 Costs per unit are kept fractional on purpose. Rounding a foot of wrap or an
 ounce of rub up to the nearest cent throws a cook off by a few percent.
 
+Each cook also shows what each protein costs you **all in** — its own meat, its
+share of the supplies it used, and a slice of the flat costs. That's the number
+that answers whether the chicken is worth cooking.
+
 **Nothing comes off the shelf until you mark a cook cooked.** Up to that point
-every cook shows an estimate, so you can change the butt count freely. Hitting
+every cook shows an estimate, so you can change what's going on the pit freely. Hitting
 *Mark cooked* takes the supplies out of stock and writes the prices down with
 that cook, so an old cook keeps its real numbers when costs move later.
 *Reopen* puts it all back.
+
+### Changing prices after the fact
+
+Meat cost lives on the cook, not the protein, so you can correct what you paid
+per butt, brisket or bird right up until you settle up. Supply costs are live on
+the Supplies tab, and every cook that hasn't been marked done re-prices itself
+the moment you change one.
+
+Marking a cook **done** is the one lock: that's when prices are written down
+with the cook so old cooks keep their real numbers. If a receipt turns up after
+that, hit **Reopen**, fix the price, and mark it done again — stock nets out to
+zero and the cook re-snapshots at the corrected cost.
 
 Stock is allowed to go negative. That isn't an error — it means you cooked on
 supplies you hadn't logged buying yet, and logging the receipt squares it up.

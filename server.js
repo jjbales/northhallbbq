@@ -5,8 +5,10 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 
 const { db, getSetting, setSetting, allSettings } = require('./lib/db');
-const { availability, priceCart, releaseExpiredHolds, ordersCloseAt, committedButts } = require('./lib/inventory');
-const { projectedUse, recordPurchase, consumeForCook, releaseForCook, suppliesForCook } = require('./lib/supplies');
+const { availability, priceCart, releaseExpiredHolds, ordersCloseAt,
+        committedByProtein, activeProteins } = require('./lib/inventory');
+const { projectedUse, piecesForCook, recordPurchase, consumeForCook, releaseForCook,
+        suppliesForCook, shelf, setRates, costByProtein } = require('./lib/supplies');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -55,9 +57,19 @@ app.get('/api/config', (req, res) => {
 
 app.get('/api/products', (req, res) => {
   res.json(
-    db.prepare('SELECT slug, name, description, unit, price_cents, butt_equiv FROM products WHERE active = 1 ORDER BY sort_order, id').all()
+    db.prepare(
+      `SELECT pr.slug, pr.name, pr.description, pr.unit, pr.price_cents, pr.piece_equiv,
+              pr.protein_id, x.slug AS protein_slug, x.name AS protein_name,
+              x.piece, x.pieces, x.yield_lbs
+         FROM products pr JOIN proteins x ON x.id = pr.protein_id
+        WHERE pr.active = 1 AND x.active = 1 AND pr.price_cents > 0
+        ORDER BY x.sort_order, pr.sort_order, pr.id`
+    ).all()
   );
 });
+
+// What's on the pit, for the admin pickers.
+app.get('/api/admin/proteins', requireAdmin, (req, res) => res.json(activeProteins()));
 
 // Every open cook, soonest first, with live availability.
 app.get('/api/cooks', (req, res) => {
@@ -93,11 +105,28 @@ const createOrder = db.transaction((payload) => {
   const avail = availability(cookDateId);
   if (!avail) throw Object.assign(new Error('That cook date is gone.'), { code: 404 });
   if (avail.closed) throw Object.assign(new Error('Orders are closed for that date.'), { code: 409 });
-  if (cart.butt_equiv > avail.butts_remaining + 1e-9) {
-    throw Object.assign(
-      new Error(`Only ${avail.whole_butts_available} whole butt(s) / ${avail.lbs_available} lbs left for that date.`),
-      { code: 409 }
-    );
+  // Each protein counts down on its own -- running out of brisket must not
+  // block a pork order, and vice versa.
+  for (const [pidStr, wanted] of Object.entries(cart.by_protein)) {
+    const line = avail.proteins.find((p) => p.protein_id === Number(pidStr));
+    if (!line) {
+      const name = db.prepare('SELECT name FROM proteins WHERE id = ?').get(Number(pidStr));
+      throw Object.assign(
+        new Error(`${name ? name.name : 'That'} isn't on the pit for that date.`), { code: 409 });
+    }
+    if (wanted > line.remaining + 1e-9) {
+      if (line.sold_out) {
+        throw Object.assign(
+          new Error(`The ${line.name.toLowerCase()} is sold out for that date. Everything else is still open.`),
+          { code: 409 });
+      }
+      const n = line.whole_available;
+      const left = line.yield_lbs > 0
+        ? `${n} whole ${n === 1 ? line.piece : line.pieces} / ${line.lbs_available} lbs`
+        : `${n} ${n === 1 ? line.piece : line.pieces}`;
+      throw Object.assign(
+        new Error(`Only ${left} of ${line.name.toLowerCase()} left for that date.`), { code: 409 });
+    }
   }
   if (slotId) {
     const slot = avail.slots.find((s) => s.id === slotId);
@@ -124,16 +153,19 @@ const createOrder = db.transaction((payload) => {
     )
     .run(
       pid, cookDateId, slotId || null, customer.name, customer.phone, customer.email || '',
-      customer.notes || '', cart.butt_equiv, cart.total_cents, mode, status, hold,
+      customer.notes || '', Object.values(cart.by_protein).reduce((a, b) => a + b, 0),
+      cart.total_cents, mode, status, hold,
       pref, optin
     );
 
   const insItem = db.prepare(
-    `INSERT INTO order_items (order_id, product_id, name, unit, qty, price_cents, butt_equiv)
-     VALUES (?,?,?,?,?,?,?)`
+    `INSERT INTO order_items (order_id, product_id, name, unit, qty, price_cents,
+                              butt_equiv, protein_id, piece_equiv)
+     VALUES (?,?,?,?,?,?,?,?,?)`
   );
   for (const l of cart.lines) {
-    insItem.run(info.lastInsertRowid, l.product_id, l.name, l.unit, l.qty, l.price_cents, l.butt_equiv);
+    insItem.run(info.lastInsertRowid, l.product_id, l.name, l.unit, l.qty, l.price_cents,
+                l.piece_equiv, l.protein_id, l.piece_equiv);
   }
   return { id: info.lastInsertRowid, public_id: pid, status };
 });
@@ -151,7 +183,6 @@ app.post('/api/orders', async (req, res) => {
 
     const cart = priceCart(items);
     if (!cart.lines.length) return res.status(400).json({ error: 'Your order is empty.' });
-    if (cart.butt_equiv <= 0) return res.status(400).json({ error: 'Your order is empty.' });
 
     const mode = paymentMode();
     const order = createOrder({
@@ -297,72 +328,102 @@ app.get('/api/admin/me', (req, res) => res.json({ signed_in: req.cookies[ADMIN_C
 app.get('/api/admin/settings', requireAdmin, (req, res) => res.json(allSettings()));
 app.post('/api/admin/settings', requireAdmin, (req, res) => {
   for (const [k, v] of Object.entries(req.body || {})) setSetting.run(k, String(v));
-  // Keep the per-pound product in step with the yield figure.
+  // Keep pork's yield and its per-pound product in step with the setting.
   const y = Number(getSetting('yield_lbs_per_butt'));
-  if (y > 0) db.prepare("UPDATE products SET butt_equiv = ? WHERE unit = 'lb'").run(1 / y);
+  if (y > 0) {
+    db.prepare("UPDATE proteins SET yield_lbs = ? WHERE slug = 'pork'").run(y);
+    db.prepare(
+      `UPDATE products SET piece_equiv = ?, butt_equiv = ?
+        WHERE unit = 'lb' AND protein_id = (SELECT id FROM proteins WHERE slug = 'pork')`
+    ).run(1 / y, 1 / y);
+  }
   res.json(allSettings());
 });
 
-app.get('/api/admin/products', requireAdmin, (req, res) =>
-  res.json(db.prepare('SELECT * FROM products ORDER BY sort_order, id').all())
-);
+const productRows = () => db.prepare(
+  `SELECT pr.*, x.slug AS protein_slug, x.name AS protein_name, x.piece, x.pieces, x.yield_lbs
+     FROM products pr LEFT JOIN proteins x ON x.id = pr.protein_id
+    ORDER BY x.sort_order, pr.sort_order, pr.id`
+).all();
+app.get('/api/admin/products', requireAdmin, (req, res) => res.json(productRows()));
 app.post('/api/admin/products', requireAdmin, (req, res) => {
-  const { id, slug, name, description, unit, price_cents, butt_equiv, active, sort_order } = req.body || {};
-  if (id) {
-    db.prepare(
-      `UPDATE products SET name=?, description=?, unit=?, price_cents=?, butt_equiv=?, active=?, sort_order=? WHERE id=?`
-    ).run(name, description || '', unit, Math.round(price_cents), butt_equiv, active ? 1 : 0, sort_order || 0, id);
-  } else {
-    db.prepare(
-      `INSERT INTO products (slug, name, description, unit, price_cents, butt_equiv, active, sort_order)
-       VALUES (?,?,?,?,?,?,?,?)`
-    ).run(slug, name, description || '', unit, Math.round(price_cents), butt_equiv, active ? 1 : 0, sort_order || 0);
+  try {
+    const { id, slug, name, description, unit, price_cents, piece_equiv,
+            protein_id, active, sort_order } = req.body || {};
+    if (!String(name || '').trim()) return res.status(400).json({ error: 'Give it a name.' });
+    const pid = Number(protein_id);
+    if (!db.prepare('SELECT 1 FROM proteins WHERE id = ?').get(pid)) {
+      return res.status(400).json({ error: 'Pick what it comes off -- pork, brisket or chicken.' });
+    }
+    const eq = Number(piece_equiv);
+    if (!Number.isFinite(eq) || eq < 0) return res.status(400).json({ error: 'Bad portion size.' });
+    const price = Math.round(Number(price_cents) || 0);
+    // price 0 is allowed, but it can't be on sale at that price
+    const live = active && price > 0 ? 1 : 0;
+
+    if (id) {
+      db.prepare(
+        `UPDATE products SET name=?, description=?, unit=?, price_cents=?,
+                piece_equiv=?, butt_equiv=?, protein_id=?, active=?, sort_order=? WHERE id=?`
+      ).run(name, description || '', unit, price, eq, eq, pid, live, sort_order || 0, id);
+    } else {
+      db.prepare(
+        `INSERT INTO products (slug, name, description, unit, price_cents, piece_equiv,
+                               butt_equiv, protein_id, active, sort_order)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`
+      ).run(slug, name, description || '', unit, price, eq, eq, pid, live, sort_order || 0);
+    }
+    res.json(productRows());
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
-  res.json(db.prepare('SELECT * FROM products ORDER BY sort_order, id').all());
 });
 
 // ------------------------------------------------------------------ supplies
 // The pantry: wrap, pans, rub, fuel. Bought in bulk for the business, drawn
 // down a cook at a time.
 app.get('/api/admin/supplies', requireAdmin, (req, res) => {
-  const rows = db.prepare('SELECT * FROM supplies ORDER BY sort_order, id').all().map((s) => ({
-    ...s,
-    low: s.active === 1 && s.low_at > 0 && s.on_hand <= s.low_at,
-    value_cents: Math.round(s.on_hand * s.unit_cost_cents),
-  }));
+  const rows = shelf();
   const purchases = db.prepare(
     `SELECT p.*, s.name, s.unit FROM supply_purchases p
      LEFT JOIN supplies s ON s.id = p.supply_id
      ORDER BY p.id DESC LIMIT 25`
   ).all();
-  res.json({ supplies: rows, purchases, value_cents: rows.reduce((a, b) => a + b.value_cents, 0) });
+  res.json({ supplies: rows, purchases, proteins: activeProteins(),
+             value_cents: rows.reduce((a, b) => a + b.value_cents, 0) });
 });
 
 app.post('/api/admin/supplies', requireAdmin, (req, res) => {
   try {
-    const { id, name, unit, per_butt, per_cook, low_at, on_hand, unit_cost_cents,
+    const { id, name, unit, per_piece, per_cook, low_at, on_hand, unit_cost_cents,
             active, sort_order } = req.body || {};
     if (!String(name || '').trim()) return res.status(400).json({ error: 'Give it a name.' });
     const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    // pork's rate still fills the legacy per_butt column so nothing reads stale
+    const porkId = (db.prepare("SELECT id FROM proteins WHERE slug = 'pork'").get() || {}).id;
+    const perButt = porkId && per_piece ? num(per_piece[porkId]) : 0;
 
-    if (id) {
+    let supplyId = id ? Number(id) : null;
+    if (supplyId) {
       // on_hand and unit cost are only set here when you're correcting a count;
       // normally they move through purchases and cooks
       db.prepare(
         `UPDATE supplies SET name=?, unit=?, per_butt=?, per_cook=?, low_at=?,
                 on_hand=?, unit_cost_cents=?, active=?, sort_order=? WHERE id=?`
-      ).run(String(name).trim(), String(unit || 'unit').trim(), num(per_butt), num(per_cook),
+      ).run(String(name).trim(), String(unit || 'unit').trim(), perButt, num(per_cook),
             num(low_at), num(on_hand), num(unit_cost_cents),
-            active === 0 || active === false ? 0 : 1, num(sort_order), Number(id));
+            active === 0 || active === false ? 0 : 1, num(sort_order), supplyId);
     } else {
-      db.prepare(
+      const info = db.prepare(
         `INSERT INTO supplies (name, unit, on_hand, unit_cost_cents, per_butt, per_cook, low_at, active, sort_order)
          VALUES (?,?,?,?,?,?,?,?,?)`
       ).run(String(name).trim(), String(unit || 'unit').trim(), num(on_hand),
-            num(unit_cost_cents), num(per_butt), num(per_cook), num(low_at),
+            num(unit_cost_cents), perButt, num(per_cook), num(low_at),
             active === 0 || active === false ? 0 : 1, num(sort_order));
+      supplyId = Number(info.lastInsertRowid);
     }
-    res.json(db.prepare('SELECT * FROM supplies ORDER BY sort_order, id').all());
+    if (per_piece) setRates(supplyId, per_piece);
+    res.json(shelf());
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
@@ -389,11 +450,13 @@ app.post('/api/admin/supplies/:id/purchase', requireAdmin, (req, res) => {
 });
 
 // What a cook this size would eat, and whether you're short.
-app.get('/api/admin/supplies/projected', requireAdmin, (req, res) => {
-  const butts = Number(req.query.butts) || 0;
-  const lines = projectedUse(butts);
+app.post('/api/admin/supplies/projected', requireAdmin, (req, res) => {
+  // { pieces: { <protein_id>: qty } } -- or a cook id to use what's on it
+  const { pieces, cook_date_id } = req.body || {};
+  const mix = cook_date_id ? piecesForCook(Number(cook_date_id)) : (pieces || {});
+  const lines = projectedUse(mix);
   res.json({
-    butts,
+    pieces: mix,
     lines,
     total_cents: lines.reduce((a, b) => a + b.total_cents, 0),
     short: lines.filter((l) => l.short_by > 0),
@@ -402,16 +465,26 @@ app.get('/api/admin/supplies/projected', requireAdmin, (req, res) => {
 
 app.post('/api/admin/cooks', requireAdmin, (req, res) => {
   try {
-    const { id, cook_date, butts_total, butt_cost_cents, other_cost_cents,
+    const { id, cook_date, proteins, other_cost_cents,
             status, note, orders_close_at, slots } = req.body || {};
 
     // --- validate, so a slip of the keyboard can't write a broken cook -------
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(cook_date || ''))) {
       return res.status(400).json({ error: 'Pick a cook date.' });
     }
-    const total = Number(butts_total);
-    if (!Number.isFinite(total) || total <= 0) {
-      return res.status(400).json({ error: 'How many butts? Must be more than zero.' });
+    const known = db.prepare('SELECT * FROM proteins WHERE active = 1').all();
+    const wanted = (Array.isArray(proteins) ? proteins : [])
+      .map((p) => ({
+        protein_id: Number(p.protein_id),
+        qty_total: Number(p.qty_total) || 0,
+        unit_cost_cents: Number(p.unit_cost_cents) || 0,
+      }))
+      .filter((p) => known.some((k) => k.id === p.protein_id));
+    if (!wanted.some((p) => p.qty_total > 0)) {
+      return res.status(400).json({ error: "Put something on the pit -- how many butts, briskets or birds?" });
+    }
+    if (wanted.some((p) => p.qty_total < 0)) {
+      return res.status(400).json({ error: "You can't cook a negative number of anything." });
     }
 
     // a different cook already owns this date?
@@ -425,35 +498,66 @@ app.post('/api/admin/cooks', requireAdmin, (req, res) => {
     let cookId = id ? Number(id) : null;
     const prior = cookId ? db.prepare('SELECT status FROM cook_dates WHERE id = ?').get(cookId) : null;
     const nextStatus = status || (prior && prior.status) || 'open';
+    const totalPieces = wanted.reduce((a, p) => a + p.qty_total, 0);
+
     if (cookId) {
-      // don't let the total drop below what people have already bought
-      const committed = committedButts(cookId);
-      if (total < committed - 1e-9) {
-        return res.status(409).json({
-          error: `You've already got ${committed} butt(s) spoken for on that date, so the total can't go below that. Cancel an order first if you need to shrink the cook.`,
-        });
+      // don't let any protein drop below what people have already bought
+      const committed = committedByProtein(cookId);
+      for (const p of wanted) {
+        const sold = committed[p.protein_id] || 0;
+        if (p.qty_total < sold - 1e-9) {
+          const k = known.find((x) => x.id === p.protein_id);
+          return res.status(409).json({
+            error: `You've already got ${sold} ${sold === 1 ? k.piece : k.pieces} of ${k.name.toLowerCase()} spoken for on that date, so it can't go below that. Cancel an order first if you need to cut back.`,
+          });
+        }
+      }
+      // and don't let one vanish from the cook entirely if it's sold
+      for (const [pidStr, sold] of Object.entries(committed)) {
+        if (sold > 1e-9 && !wanted.some((p) => p.protein_id === Number(pidStr) && p.qty_total > 0)) {
+          const k = known.find((x) => x.id === Number(pidStr));
+          return res.status(409).json({
+            error: `There are orders for ${k ? k.name.toLowerCase() : 'something'} on that date, so you can't take it off the cook. Cancel those orders first.`,
+          });
+        }
       }
       db.prepare(
-        `UPDATE cook_dates SET cook_date=?, butts_total=?, butt_cost_cents=?, other_cost_cents=?,
+        `UPDATE cook_dates SET cook_date=?, butts_total=?, other_cost_cents=?,
                 status=?, note=?, orders_close_at=? WHERE id=?`
-      ).run(cook_date, total, Math.round(butt_cost_cents || 0), Math.round(other_cost_cents || 0),
+      ).run(cook_date, totalPieces, Math.round(other_cost_cents || 0),
             nextStatus, note || '', orders_close_at || null, cookId);
     } else {
       const info = db.prepare(
         `INSERT INTO cook_dates (cook_date, butts_total, butt_cost_cents, other_cost_cents, status, note, orders_close_at)
          VALUES (?,?,?,?,?,?,?)`
-      ).run(cook_date, total, Math.round(butt_cost_cents || 0), Math.round(other_cost_cents || 0),
+      ).run(cook_date, totalPieces, 0, Math.round(other_cost_cents || 0),
             nextStatus, note || '', orders_close_at || null);
       cookId = info.lastInsertRowid;
+    }
+
+    // --- what's going on the pit -------------------------------------------
+    const upCP = db.prepare(
+      `INSERT INTO cook_proteins (cook_date_id, protein_id, qty_total, unit_cost_cents)
+       VALUES (?,?,?,?)
+       ON CONFLICT(cook_date_id, protein_id)
+       DO UPDATE SET qty_total = excluded.qty_total, unit_cost_cents = excluded.unit_cost_cents`
+    );
+    for (const p of wanted) upCP.run(cookId, p.protein_id, p.qty_total, p.unit_cost_cents);
+    // anything dropped to zero and unsold comes off the cook
+    for (const p of wanted) {
+      if (p.qty_total <= 0) {
+        db.prepare('DELETE FROM cook_proteins WHERE cook_date_id = ? AND protein_id = ?')
+          .run(cookId, p.protein_id);
+      }
     }
 
     // --- slots: update in place, never orphan an order's pickup window ------
     if (Array.isArray(slots)) {
       const existing = db.prepare('SELECT * FROM pickup_slots WHERE cook_date_id = ?').all(cookId);
-      const wanted = slots.filter((x) => x && x.label);
+      const want = slots.filter((x) => x && x.label);
       const keep = new Set();
 
-      wanted.forEach((w, i) => {
+      want.forEach((w, i) => {
         const match = existing.find((e) => e.label === w.label);
         if (match) {
           keep.add(match.id);
@@ -480,7 +584,7 @@ app.post('/api/admin/cooks', requireAdmin, (req, res) => {
 
     // --- supplies: stock comes out of inventory when the cook is marked done -
     // Before that it's only an estimate, so nothing is deducted and you're free
-    // to change the butt count without the wrap and pans going out of step.
+    // to change what's going on the pit without the wrap and pans going out of step.
     if (nextStatus === 'done') consumeForCook(cookId);
     else releaseForCook(cookId);
 
@@ -488,6 +592,11 @@ app.post('/api/admin/cooks', requireAdmin, (req, res) => {
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
+});
+
+app.delete('/api/admin/cooks/:id', requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM cook_dates WHERE id = ?').run(Number(req.params.id));
+  res.json({ ok: true });
 });
 
 // Open it back up, close orders, or call it done. Marking it done is what
@@ -511,11 +620,6 @@ app.post('/api/admin/cooks/:id/status', requireAdmin, (req, res) => {
   }
 });
 
-app.delete('/api/admin/cooks/:id', requireAdmin, (req, res) => {
-  db.prepare('DELETE FROM cook_dates WHERE id = ?').run(Number(req.params.id));
-  res.json({ ok: true });
-});
-
 // Every cook with orders and the money breakdown.
 app.get('/api/admin/dashboard', requireAdmin, (req, res) => {
   releaseExpiredHolds();
@@ -537,31 +641,54 @@ app.get('/api/admin/dashboard', requireAdmin, (req, res) => {
     const revenue = booked.reduce((s, o) => s + o.total_cents, 0);
     const collected = booked.filter((o) => o.status === 'paid' || o.status === 'picked_up')
       .reduce((s, o) => s + o.total_cents, 0);
-    const pork = Math.round(c.butt_cost_cents * c.butts_total);
+    // Meat cost, protein by protein -- pork and brisket don't cost the same.
+    const meat = avail.proteins.map((p) => ({
+      protein_id: p.protein_id,
+      name: p.name,
+      piece: p.piece,
+      pieces: p.pieces,
+      qty: p.total,
+      unit_cost_cents: p.unit_cost_cents,
+      total_cents: Math.round(p.unit_cost_cents * p.total),
+    }));
+    const meatTotal = meat.reduce((a, m) => a + m.total_cents, 0);
+    // what each protein costs you all-in, per piece
+    const split = costByProtein(c.id, c.other_cost_cents);
+    for (const m of meat) {
+      const sh = split[m.protein_id] || { supplies_cents: 0, other_cents: 0 };
+      m.supplies_cents = sh.supplies_cents;
+      m.other_cents = sh.other_cents;
+      m.all_in_cents = m.total_cents + sh.supplies_cents + sh.other_cents;
+      m.cost_each_cents = m.qty > 0 ? Math.round(m.all_in_cents / m.qty) : 0;
+    }
+
     // snapshot if the cook is closed out, running estimate if it hasn't happened
-    const sup = suppliesForCook(c.id, c.butts_total);
-    const costs = pork + c.other_cost_cents + sup.total_cents;
+    const sup = suppliesForCook(c.id);
+    const costs = meatTotal + c.other_cost_cents + sup.total_cents;
+    const pieces = avail.pieces_total;
+
 
     return {
       ...c,
       availability: avail,
       orders,
+      meat,
       supplies: sup.lines,
       supplies_settled: sup.settled,
       money: {
         revenue_cents: revenue,
         collected_cents: collected,
         outstanding_cents: revenue - collected,
-        pork_cost_cents: pork,
+        meat_cost_cents: meatTotal,
+        pork_cost_cents: meatTotal,           // old name, same number
         other_cost_cents: c.other_cost_cents,
         supplies_cents: sup.total_cents,
-        cost_per_butt_cents: c.butts_total > 0 ? Math.round(costs / c.butts_total) : 0,
+        cost_per_piece_cents: pieces > 0 ? Math.round(costs / pieces) : 0,
+        cost_per_butt_cents: pieces > 0 ? Math.round(costs / pieces) : 0,
         total_cost_cents: costs,
         profit_cents: revenue - costs,
         margin_pct: revenue > 0 ? Math.round(((revenue - costs) / revenue) * 100) : 0,
-        breakeven_butts: c.butt_cost_cents > 0 || c.other_cost_cents > 0
-          ? Math.ceil(costs / Math.max(1, (db.prepare("SELECT price_cents FROM products WHERE slug='whole-butt'").get() || {}).price_cents || 5000))
-          : 0,
+        breakeven_cents: costs,   // what you have to take in to be square
       },
     };
   });
@@ -656,19 +783,39 @@ app.post('/api/admin/messages/:id/sent', requireAdmin, (req, res) => {
 app.get('/api/admin/export.csv', requireAdmin, (req, res) => {
   const rows = db.prepare(`
     SELECT c.cook_date, o.public_id, o.customer_name, o.phone, o.email,
-           s.label AS slot, o.status, o.total_cents, o.butt_equiv, o.created_at, o.notes,
-           o.contact_pref, o.reminder_optin
+           s.label AS slot, o.status, o.total_cents, o.created_at, o.notes,
+           o.contact_pref, o.reminder_optin, o.id
       FROM orders o JOIN cook_dates c ON c.id = o.cook_date_id
       LEFT JOIN pickup_slots s ON s.id = o.slot_id
-     WHERE o.status != 'cancelled' ORDER BY c.cook_date DESC, o.created_at`).all();
-  const esc = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
-  const head = 'Cook Date,Order,Name,Phone,Email,Pickup,Status,Total,Butt Equivalent,Placed,Notes,Contact Preference,Wants Reminder';
-  const body = rows.map((r) =>
-    [r.cook_date, r.public_id, r.customer_name, r.phone, r.email, r.slot, r.status,
-     money(r.total_cents), r.butt_equiv, r.created_at, r.notes,
-     r.contact_pref, r.reminder_optin ? 'yes' : 'no'].map(esc).join(',')
+     ORDER BY c.cook_date DESC, o.created_at DESC`).all();
+
+  // one column per protein, so a spreadsheet can total the pit at a glance
+  const proteins = activeProteins();
+  const perOrder = db.prepare(
+    `SELECT protein_id, COALESCE(SUM(piece_equiv * qty), 0) AS n
+       FROM order_items WHERE order_id = ? GROUP BY protein_id`
   );
-  res.type('text/csv').attachment('bbq-orders.csv').send([head, ...body].join('\n'));
+
+  const head = ['Cook date', 'Order', 'Name', 'Phone', 'Email', 'Pickup', 'Status', 'Total',
+    ...proteins.map((p) => p.name), 'Items', 'Placed', 'Contact', 'Reminder', 'Notes'];
+  const esc = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+
+  const lines = [head.map(esc).join(',')];
+  for (const r of rows) {
+    const mix = {};
+    for (const x of perOrder.all(r.id)) mix[x.protein_id] = Math.round(x.n * 100) / 100;
+    const items = db.prepare('SELECT name, unit, qty FROM order_items WHERE order_id = ?').all(r.id)
+      .map((i) => (i.unit === 'lb' ? `${i.qty} lb ${i.name}` : `${i.qty}x ${i.name}`)).join('; ');
+    lines.push([
+      r.cook_date, r.public_id, r.customer_name, r.phone, r.email, r.slot || '', r.status,
+      money(r.total_cents), ...proteins.map((p) => mix[p.id] || 0), items,
+      r.created_at, r.contact_pref, r.reminder_optin ? 'yes' : 'no', r.notes || '',
+    ].map(esc).join(','));
+  }
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="north-hall-bbq-orders.csv"');
+  res.send(lines.join('\n'));
 });
 
 app.listen(PORT, () => {
