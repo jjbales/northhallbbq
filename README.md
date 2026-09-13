@@ -169,6 +169,29 @@ and the shop's groups follow.
 
 Saving a price or a count never moves a row; only the arrows do.
 
+## The logo
+
+`public/brand/logo-512.png` is the badge Jason supplied — the chrome-bevelled
+"North Hall BBQ" with green flames over crossed logs. It's the header mark on
+every page; `favicon-32/64.png` and `apple-touch-icon.png` are cut from the same
+file. The older drawn marks (`mark-*.svg`) are still in the folder but nothing
+uses them.
+
+## The look
+
+The site takes its cues from the softball tryout graphics Jason shared: a
+near-black ground slashed with the accent colour, giant condensed italic type
+with a light outline and a hard shadow, brush-script accents, dark rounded
+panels with a coloured tab, big date numerals, icon circles, and a full-width
+banner strip at the bottom. Their gold and blue became North Hall green and
+ember.
+
+Fonts: **Anton** for display (the headline, section heads, the giant dates, the
+strip), **Oswald** for labels, **Source Sans 3** for body. The hero illustration
+is an offset smoker drawn in SVG — barrel, firebox with a live fire seen
+through the open door, stack, wheels — with CSS animation for the flicker, the
+embers and the smoke. It respects `prefers-reduced-motion`.
+
 ## Badges
 
 Each protein ships with a drawn badge — original SVG in the site's colors, in

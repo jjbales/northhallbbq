@@ -1,33 +1,89 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 620" width="256" height="256">
-<circle cx="310" cy="310" r="300" fill="#f4f1e6" stroke="#22351f" stroke-width="20"/>
-<g transform="translate(310,318) scale(1.28) translate(-300,-177)">
-  <path d="M 300 44 C 268 96 250 128 250 152 C 250 168 256 180 266 188
-           C 252 176 246 160 248 142 C 226 168 216 192 218 214
-           C 220 244 246 264 278 268 L 322 268 C 356 264 382 242 384 212
-           C 386 188 374 164 352 142 C 356 162 350 178 336 190
-           C 346 178 350 162 346 144 C 340 112 322 78 300 44 Z" fill="#c2481f"/>
-  <path d="M 300 108 C 282 142 272 164 272 182 C 272 206 284 222 300 230
-           C 318 222 330 206 330 182 C 330 162 318 140 300 108 Z" fill="#e8822a"/>
-  <path d="M 300 152 C 292 172 288 186 288 196 C 288 212 294 222 301 226
-           C 310 221 315 211 315 197 C 315 185 309 170 300 152 Z" fill="#f7c14a"/>
-  <g transform="translate(300,268) rotate(-17)">
-    <rect x="-118" y="-25" width="236" height="50" rx="25"
-          fill="#7d6647" stroke="#22351f" stroke-width="9"/>
-    <ellipse cx="-112" cy="0" rx="13" ry="18" fill="#b9a481"
-             stroke="#22351f" stroke-width="8"/>
-    <ellipse cx="112" cy="0" rx="13" ry="18" fill="#b9a481"
-             stroke="#22351f" stroke-width="8"/>
-    <path d="M -84 -9 H 84 M -72 9 H 72"
-          stroke="#22351f" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
+  <defs>
+    <radialGradient id="nhWarm" cx=".5" cy=".62" r=".55">
+      <stop offset="0" stop-color="#f7c14a" stop-opacity=".55"/>
+      <stop offset=".55" stop-color="#e8822a" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#e8822a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="nhFa" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#8f2f14"/><stop offset=".45" stop-color="#c2481f"/><stop offset="1" stop-color="#e8822a"/>
+    </linearGradient>
+    <linearGradient id="nhFb" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#c2481f"/><stop offset=".5" stop-color="#e8822a"/><stop offset="1" stop-color="#f7c14a"/>
+    </linearGradient>
+    <linearGradient id="nhFc" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#e8822a"/><stop offset=".55" stop-color="#f7c14a"/><stop offset="1" stop-color="#fff1b8"/>
+    </linearGradient>
+    <linearGradient id="nhLog" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9b7a4f"/><stop offset=".5" stop-color="#7a5c38"/><stop offset="1" stop-color="#4f3820"/>
+    </linearGradient>
+    <radialGradient id="nhCut" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#e9d7b1"/><stop offset="1" stop-color="#c9ad7f"/>
+    </radialGradient>
+    <filter id="nhGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14"/></filter>
+    <clipPath id="nhDisc"><circle cx="310" cy="310" r="286"/></clipPath>
+  </defs>
+  <circle cx="310" cy="310" r="300" fill="#f4f1e6" stroke="#22351f" stroke-width="20"/>
+  <circle cx="310" cy="310" r="270" fill="none" stroke="#e8822a" stroke-width="5" stroke-dasharray="14 10" opacity=".85"/>
+  <g clip-path="url(#nhDisc)">
+    <circle cx="310" cy="330" r="240" fill="url(#nhWarm)"/>
+    <circle cx="310" cy="300" r="120" fill="#f7c14a" opacity=".38" filter="url(#nhGlow)"/>
   </g>
-  <g transform="translate(300,282) rotate(15)">
-    <rect x="-118" y="-25" width="236" height="50" rx="25"
-          fill="#7d6647" stroke="#22351f" stroke-width="9"/>
-    <ellipse cx="-112" cy="0" rx="13" ry="18" fill="#b9a481"
-             stroke="#22351f" stroke-width="8"/>
-    <ellipse cx="112" cy="0" rx="13" ry="18" fill="#b9a481"
-             stroke="#22351f" stroke-width="8"/>
-    <path d="M -84 -9 H 84 M -72 9 H 72"
-          stroke="#22351f" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
-  </g></g>
+  <g transform="translate(310,404) rotate(-17)">
+      <rect x="-152" y="-32" width="304" height="64" rx="32" fill="url(#nhLog)" stroke="#22351f" stroke-width="10"/>
+      <path d="M-112 -12 H112 M-98 8 H98 M-70 18 H46" stroke="#3d2a15" stroke-width="6" stroke-linecap="round" opacity=".6"/>
+      <path d="M-108 -21 H70" stroke="#c19a68" stroke-width="3.5" stroke-linecap="round" opacity=".45"/>
+      <g transform="translate(-142,0)">
+        <ellipse rx="18" ry="27" fill="url(#nhCut)" stroke="#22351f" stroke-width="9"/>
+        <ellipse rx="11" ry="17" fill="none" stroke="#a8875a" stroke-width="2.6"/>
+        <ellipse rx="5" ry="8" fill="none" stroke="#a8875a" stroke-width="2.4"/>
+      </g>
+      <g transform="translate(142,0)">
+        <ellipse rx="18" ry="27" fill="url(#nhCut)" stroke="#22351f" stroke-width="9"/>
+        <ellipse rx="11" ry="17" fill="none" stroke="#a8875a" stroke-width="2.6"/>
+        <ellipse rx="5" ry="8" fill="none" stroke="#a8875a" stroke-width="2.4"/>
+      </g>
+    </g>
+  <g transform="translate(310,420) rotate(15)">
+      <rect x="-152" y="-32" width="304" height="64" rx="32" fill="url(#nhLog)" stroke="#22351f" stroke-width="10"/>
+      <path d="M-112 -12 H112 M-98 8 H98 M-70 18 H46" stroke="#3d2a15" stroke-width="6" stroke-linecap="round" opacity=".6"/>
+      <path d="M-108 -21 H70" stroke="#c19a68" stroke-width="3.5" stroke-linecap="round" opacity=".45"/>
+      <g transform="translate(-142,0)">
+        <ellipse rx="18" ry="27" fill="url(#nhCut)" stroke="#22351f" stroke-width="9"/>
+        <ellipse rx="11" ry="17" fill="none" stroke="#a8875a" stroke-width="2.6"/>
+        <ellipse rx="5" ry="8" fill="none" stroke="#a8875a" stroke-width="2.4"/>
+      </g>
+      <g transform="translate(142,0)">
+        <ellipse rx="18" ry="27" fill="url(#nhCut)" stroke="#22351f" stroke-width="9"/>
+        <ellipse rx="11" ry="17" fill="none" stroke="#a8875a" stroke-width="2.6"/>
+        <ellipse rx="5" ry="8" fill="none" stroke="#a8875a" stroke-width="2.4"/>
+      </g>
+    </g>
+  <!-- heat where the fire meets the wood -->
+  <ellipse cx="310" cy="400" rx="84" ry="18" fill="#e8822a" opacity=".45" filter="url(#nhGlow)"/>
+  <g transform="translate(310,322) scale(1.34) translate(-300,-177)">
+      <!-- outer silhouette: the one he picked, kept -->
+      <path d="M 300 40 C 268 92 250 124 250 148 C 250 164 256 176 266 184
+               C 252 172 246 156 248 138 C 226 164 216 188 218 210
+               C 220 240 246 260 278 264 L 322 264 C 356 260 382 238 384 208
+               C 386 184 374 160 352 138 C 356 158 350 174 336 186
+               C 346 174 350 158 346 140 C 340 108 322 74 300 40 Z"
+            fill="url(#nhFa)" stroke="#22351f" stroke-width="6" stroke-linejoin="round"/>
+      <!-- mid tongue, offset a touch so it reads as a second lick -->
+      <path d="M 302 92 C 282 128 270 154 270 176 C 270 200 282 218 300 226
+               C 318 218 330 200 330 176 C 330 156 320 134 302 92 Z" fill="url(#nhFb)"/>
+      <path d="M 286 130 C 276 150 272 164 274 178 C 276 192 284 202 294 206
+               C 286 196 284 184 288 170 C 290 158 288 146 286 130 Z" fill="#e8822a" opacity=".85"/>
+      <!-- inner -->
+      <path d="M 300 146 C 290 168 285 184 285 198 C 285 214 291 224 300 229
+               C 309 224 315 214 315 198 C 315 184 310 168 300 146 Z" fill="url(#nhFc)"/>
+      <!-- white-hot core -->
+      <path d="M 300 184 C 295 196 293 205 293 213 C 293 221 296 227 300 230
+               C 304 227 307 221 307 213 C 307 205 305 196 300 184 Z" fill="#fff7d6"/>
+    </g>
+  <g fill="#f7c14a">
+      <circle cx="226" cy="138" r="6"/><circle cx="398" cy="118" r="5"/><circle cx="266" cy="84" r="4"/>
+      <circle cx="356" cy="70" r="3.5" opacity=".85"/><circle cx="204" cy="196" r="3.5" opacity=".8"/>
+      <circle cx="412" cy="182" r="4" opacity=".8"/><circle cx="318" cy="52" r="3" opacity=".7"/>
+    </g>
 </svg>

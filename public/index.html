@@ -4,91 +4,251 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Order Whole Boston Butts</title>
-<link rel="icon" href="brand/mark-green.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="brand/favicon-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="brand/favicon-64.png">
+<link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Permanent+Marker&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <header class="site">
-  <!-- Illustrated scene: pit, smoke and embers. Drawn, not photographed. -->
-  <div class="heroart" aria-hidden="true">
-    <svg viewBox="0 0 1440 520" preserveAspectRatio="xMidYMax slice">
-      <defs>
-        <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="26"/>
-        </filter>
-        <filter id="softer" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="46"/>
-        </filter>
-        <linearGradient id="smoke" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity=".34"/>
-          <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-        </linearGradient>
-        <radialGradient id="heat" cx="50%" cy="100%" r="70%">
-          <stop offset="0%" stop-color="#f7c14a" stop-opacity=".55"/>
-          <stop offset="55%" stop-color="#c2481f" stop-opacity=".22"/>
-          <stop offset="100%" stop-color="#c2481f" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
+  <!-- halftone + pinstripe texture over the dark ground, like a printed flyer -->
+  <div class="heroart" aria-hidden="true"></div>
 
-      <g transform="translate(168,14)">
-      <!-- smoke plumes -->
-      <g filter="url(#softer)" opacity="1">
-        <path d="M1060 460 C1035 350 1105 300 1080 215 C1062 155 1108 120 1096 60
-                 C1150 130 1108 180 1132 245 C1154 305 1112 360 1140 460 Z" fill="url(#smoke)"/>
-        <path d="M1215 460 C1198 372 1250 330 1232 268 C1219 224 1252 196 1244 152
-                 C1284 208 1253 244 1271 292 C1289 336 1258 376 1279 460 Z" fill="url(#smoke)"/>
-        <path d="M905 460 C890 390 932 358 918 306 C907 268 934 246 928 210
-                 C961 256 936 286 950 326 C965 362 939 396 956 460 Z" fill="url(#smoke)"/>
-      </g>
-
-      <!-- heat haze over the firebox -->
-      <ellipse cx="1120" cy="470" rx="230" ry="120" fill="url(#heat)"/>
-
-      <!-- the pit, in silhouette -->
-      <g fill="#0b140e" opacity=".92" transform="translate(118,22)">
-        <rect x="1042" y="300" width="26" height="72" rx="5"/>
-        <rect x="900" y="360" width="230" height="86" rx="40"/>
-        <rect x="838" y="382" width="70" height="64" rx="12"/>
-        <path d="M934 446 l-14 44 M1100 446 l14 44" stroke="#0b140e" stroke-width="15" stroke-linecap="round"/>
-        <rect x="856" y="440" width="292" height="15" rx="7"/>
-      </g>
-      <!-- ember mouth -->
-      <rect x="970" y="426" width="42" height="22" rx="6" fill="#e8822a" opacity=".9"/>
-      <rect x="974" y="430" width="34" height="14" rx="4" fill="#f7c14a" opacity=".95"/>
-
-      <!-- sparks -->
-      <g fill="#f7c14a">
-        <circle cx="880" cy="330" r="3" opacity=".85"/><circle cx="912" cy="286" r="2.2" opacity=".7"/>
-        <circle cx="856" cy="268" r="2.6" opacity=".6"/><circle cx="940" cy="228" r="2" opacity=".5"/>
-        <circle cx="820" cy="330" r="2.2" opacity=".55"/><circle cx="964" cy="300" r="2.6" opacity=".65"/>
-        <circle cx="800" cy="250" r="1.8" opacity=".4"/><circle cx="988" cy="196" r="2" opacity=".45"/>
-      </g>
-      </g>
-    </svg>
-  </div>
-
-  <div class="wrap">
-    <div class="brandbar">
-      <div class="lockup">
-        <img src="brand/mark-white.svg" alt="" class="mark" width="96" height="96">
-        <div>
-        <h1 id="bizName" data-text="North Hall BBQ">North Hall BBQ</h1>
-        <p class="ribbon"><span id="tagline">Since 2014 — one butt or a thousand, same flavor every time.</span></p>
+  <div class="wrap hero">
+    <div class="hero-copy">
+      <div class="brandbar">
+        <div class="lockup">
+          <img src="brand/logo-512.png" alt="North Hall BBQ" class="mark" width="168" height="168">
+          <div class="titles">
+            <p class="eyebrow"><span>Gainesville, GA<span class="more"> &middot; Cooking since 2014</span></span></p>
+            <h1 id="bizName" data-text="North Hall BBQ">North Hall BBQ</h1>
+            <p class="ribbon"><span id="tagline">Since 2014 — one butt or a thousand, same flavor every time.</span></p>
+          </div>
         </div>
       </div>
+      <nav class="navlinks">
+        <a href="gallery.html" class="nav-main">Photos &amp; reviews</a>
+        <a href="admin.html" class="nav-quiet">Owner login</a>
+      </nav>
+      <div class="trust">
+        <div><i class="ico"><svg viewBox="0 0 24 24"><path d="M12 2c1 4-3 5-3 9a3 3 0 0 0 6 0c0-2-1-3-1-3s3 2 3 5a5 5 0 0 1-10 0c0-5 5-6 5-11z"/></svg></i><b>Since 2014</b>Low &amp; slow, every cook</div>
+        <div><i class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="8" rx="4"/><path d="M6 16v4M18 16v4M5 8V5h3"/></svg></i><b>1 &ndash; 1000</b>Off the pit per cook</div>
+        <div><i class="ico"><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg></i><b>Local</b>Gainesville pickup</div>
+        <div><i class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></i><b>Fundraisers</b>Churches &middot; schools &middot; teams</div>
+      </div>
     </div>
-    <nav class="navlinks">
-      <a href="gallery.html" class="nav-main">Photos &amp; reviews</a>
-      <a href="admin.html" class="nav-quiet">Owner login</a>
-    </nav>
-    <div class="trust">
-      <div><b>2014</b>Cooking since</div>
-      <div><b>1&nbsp;&ndash;&nbsp;1000</b>Off the pit per cook</div>
-      <div><b>LOCAL</b>Gainesville pickup</div>
-      <div><b>FUNDRAISERS</b>Churches &middot; schools &middot; teams &middot; non-profits</div>
+    <!-- The pit. Drawn, not photographed -- and it's lit. -->
+    <div class="hero-art" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -250 680 690" class="smoker" aria-hidden="true">
+  <defs>
+    <!-- steel -->
+    <linearGradient id="skBarrel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b6168"/>
+      <stop offset=".18" stop-color="#3c4147"/>
+      <stop offset=".55" stop-color="#22262a"/>
+      <stop offset="1" stop-color="#0f1214"/>
+    </linearGradient>
+    <linearGradient id="skBox" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a4f55"/>
+      <stop offset=".5" stop-color="#1f2326"/>
+      <stop offset="1" stop-color="#0c0e10"/>
+    </linearGradient>
+    <linearGradient id="skPipe" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#15181b"/>
+      <stop offset=".35" stop-color="#4d535a"/>
+      <stop offset=".6" stop-color="#2a2e32"/>
+      <stop offset="1" stop-color="#0d0f11"/>
+    </linearGradient>
+    <linearGradient id="skWood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9a7448"/>
+      <stop offset="1" stop-color="#5e4226"/>
+    </linearGradient>
+    <!-- warm light from the firebox, spilling onto the steel and the ground -->
+    <radialGradient id="skRim" cx="1" cy=".65" r=".75">
+      <stop offset="0" stop-color="#f7c14a" stop-opacity=".55"/>
+      <stop offset=".45" stop-color="#e8822a" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#e8822a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="skGround" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#f7c14a" stop-opacity=".7"/>
+      <stop offset=".5" stop-color="#c2481f" stop-opacity=".25"/>
+      <stop offset="1" stop-color="#c2481f" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="skFireGlow" cx=".5" cy=".7" r=".6">
+      <stop offset="0" stop-color="#fff2b0"/>
+      <stop offset=".35" stop-color="#f7c14a"/>
+      <stop offset=".7" stop-color="#e8822a" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#c2481f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="skFlameA" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#c2481f"/><stop offset=".55" stop-color="#e8822a"/><stop offset="1" stop-color="#f7c14a"/>
+    </linearGradient>
+    <linearGradient id="skFlameB" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#e8822a"/><stop offset=".6" stop-color="#f7c14a"/><stop offset="1" stop-color="#fff3c0"/>
+    </linearGradient>
+    <linearGradient id="skSmoke" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#e9ece8" stop-opacity=".5"/>
+      <stop offset=".5" stop-color="#d9ded9" stop-opacity=".26"/>
+      <stop offset="1" stop-color="#cfd5cf" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="skBlur" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="11"/></filter>
+    <filter id="skBlurSm" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="skGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="9"/></filter>
+    <clipPath id="skDoor"><rect x="512" y="262" width="66" height="66" rx="4"/></clipPath>
+  </defs>
+
+  <!-- ===== smoke, behind everything ===== -->
+  <g class="sk-smoke" filter="url(#skBlur)">
+    <!-- narrow at the stack, spreading as it rises, drifting off to the right -->
+    <path class="sk-plume p1" d="M150 40 C140 -10 176 -40 166 -90 C158 -130 200 -160 192 -215 C240 -170 210 -130 236 -90 C262 -50 214 -20 232 40 Z" fill="url(#skSmoke)"/>
+    <path class="sk-plume p2" d="M160 36 C170 -20 226 -30 224 -100 C222 -150 280 -170 284 -230 C330 -180 292 -140 312 -95 C334 -45 276 -10 262 36 Z" fill="url(#skSmoke)" opacity=".8"/>
+    <path class="sk-plume p3" d="M152 40 C136 0 158 -30 150 -70 C144 -105 186 -120 184 -160 C222 -125 196 -95 210 -60 C226 -25 188 5 200 40 Z" fill="url(#skSmoke)" opacity=".9"/>
+  </g>
+
+  <!-- ===== ground ===== -->
+  <ellipse cx="360" cy="404" rx="300" ry="14" fill="#000" opacity=".35"/>
+  <ellipse cx="545" cy="398" rx="120" ry="26" fill="url(#skGround)" class="sk-ground"/>
+
+  <!-- ===== frame: axle bar, legs, wheels ===== -->
+  <g stroke="#0d0f11" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <!-- left leg, angled -->
+    <path d="M168 300 L150 388" stroke="#1a1d20" stroke-width="12"/>
+    <path d="M168 300 L150 388" stroke="#3c4147" stroke-width="5"/>
+    <!-- axle bar -->
+    <rect x="140" y="330" width="420" height="14" rx="4" fill="url(#skPipe)"/>
+    <!-- wheel -->
+    <g transform="translate(548 378)">
+      <circle r="40" fill="#101214"/>
+      <circle r="34" fill="none" stroke="#3a3f45" stroke-width="7"/>
+      <g stroke="#2a2e32" stroke-width="5"><path d="M0 -30V30M-30 0H30M-21 -21L21 21M-21 21L21 -21"/></g>
+      <circle r="9" fill="#4a4f55"/>
+      <circle r="4" fill="#15181b"/>
+    </g>
+    <g transform="translate(468 378)">
+      <circle r="34" fill="#101214"/>
+      <circle r="28" fill="none" stroke="#3a3f45" stroke-width="6"/>
+      <g stroke="#2a2e32" stroke-width="4"><path d="M0 -24V24M-24 0H24M-17 -17L17 17M-17 17L17 -17"/></g>
+      <circle r="8" fill="#4a4f55"/>
+      <circle r="3.5" fill="#15181b"/>
+    </g>
+  </g>
+
+  <!-- ===== wood shelf under the chamber ===== -->
+  <g stroke="#2b1a0c" stroke-width="2">
+    <rect x="178" y="312" width="262" height="9" rx="2" fill="url(#skWood)"/>
+    <rect x="178" y="324" width="262" height="9" rx="2" fill="url(#skWood)"/>
+    <path d="M200 316h60M290 316h40M360 316h50M215 328h45M300 328h70" stroke="#4a2f16" stroke-width="1.5" opacity=".7"/>
+  </g>
+
+  <!-- ===== stack ===== -->
+  <g>
+    <rect x="146" y="52" width="30" height="112" rx="3" fill="url(#skPipe)" stroke="#0d0f11" stroke-width="3"/>
+    <rect x="138" y="44" width="46" height="12" rx="3" fill="#2a2e32" stroke="#0d0f11" stroke-width="3"/>
+    <path d="M132 40 h58 l-6 -14 h-46 z" fill="#3c4147" stroke="#0d0f11" stroke-width="3" stroke-linejoin="round"/>
+    <rect x="141" y="150" width="40" height="10" rx="3" fill="#2a2e32" stroke="#0d0f11" stroke-width="3"/>
+  </g>
+
+  <!-- ===== cook chamber ===== -->
+  <g>
+    <rect x="96" y="150" width="400" height="156" rx="78" fill="url(#skBarrel)" stroke="#0a0c0e" stroke-width="4"/>
+    <!-- warm light on the firebox end -->
+    <rect x="96" y="150" width="400" height="156" rx="78" fill="url(#skRim)"/>
+    <!-- lid seam -->
+    <path d="M110 232 H482" stroke="#0a0c0e" stroke-width="3"/>
+    <path d="M110 235 H482" stroke="#6b7178" stroke-width="1" opacity=".55"/>
+    <!-- end rims -->
+    <rect x="102" y="152" width="16" height="152" rx="6" fill="#33383d" stroke="#0a0c0e" stroke-width="3"/>
+    <rect x="474" y="152" width="16" height="152" rx="6" fill="#33383d" stroke="#0a0c0e" stroke-width="3"/>
+    <!-- rivets -->
+    <g fill="#5b6168" stroke="#0a0c0e" stroke-width="1.2">
+      <circle cx="110" cy="176" r="2.6"/><circle cx="110" cy="204" r="2.6"/><circle cx="110" cy="252" r="2.6"/><circle cx="110" cy="280" r="2.6"/>
+      <circle cx="482" cy="176" r="2.6"/><circle cx="482" cy="204" r="2.6"/><circle cx="482" cy="252" r="2.6"/><circle cx="482" cy="280" r="2.6"/>
+    </g>
+    <!-- hinges along the back of the lid -->
+    <rect x="190" y="146" width="26" height="10" rx="3" fill="#3c4147" stroke="#0a0c0e" stroke-width="2.5"/>
+    <rect x="372" y="146" width="26" height="10" rx="3" fill="#3c4147" stroke="#0a0c0e" stroke-width="2.5"/>
+    <!-- lid handle -->
+    <path d="M226 197 v-12 h140 v12" fill="none" stroke="#0a0c0e" stroke-width="9" stroke-linecap="round"/>
+    <path d="M226 197 v-12 h140 v12" fill="none" stroke="#6b7178" stroke-width="4" stroke-linecap="round"/>
+    <path d="M232 185 h128" stroke="#a9afb5" stroke-width="1.4" opacity=".7"/>
+    <!-- thermometer -->
+    <g transform="translate(296 208)">
+      <circle r="17" fill="#e9e6dc" stroke="#0a0c0e" stroke-width="3"/>
+      <circle r="12" fill="none" stroke="#8a8f94" stroke-width="1"/>
+      <path d="M0 0 L7 -8" stroke="#c2481f" stroke-width="2.4" stroke-linecap="round"/>
+      <circle r="2.2" fill="#0a0c0e"/>
+      <path d="M-9 -6 l2 1 M9 -6 l-2 1 M0 -11 v2" stroke="#0a0c0e" stroke-width="1.4"/>
+    </g>
+    <!-- highlight along the top of the barrel -->
+    <path d="M150 162 C 230 152, 360 152, 445 164" stroke="#aeb4ba" stroke-width="2.5" stroke-linecap="round" opacity=".45"/>
+    <path d="M178 158 C 240 150, 340 150, 400 156" stroke="#dfe3e6" stroke-width="1.2" stroke-linecap="round" opacity=".5"/>
+  </g>
+
+  <!-- ===== firebox, hung off the right end ===== -->
+  <g>
+    <!-- throat joining the two -->
+    <rect x="470" y="248" width="40" height="60" fill="#181b1e" stroke="#0a0c0e" stroke-width="3"/>
+    <rect x="488" y="230" width="116" height="118" rx="20" fill="url(#skBox)" stroke="#0a0c0e" stroke-width="4"/>
+    <rect x="488" y="230" width="116" height="118" rx="20" fill="url(#skRim)" opacity=".6"/>
+    <!-- fire inside, seen through the open door -->
+    <g clip-path="url(#skDoor)">
+      <rect x="512" y="262" width="66" height="66" fill="#1a0a03"/>
+      <ellipse cx="545" cy="326" rx="40" ry="26" fill="url(#skFireGlow)"/>
+      <!-- coals -->
+      <g fill="#3a1508"><ellipse cx="528" cy="322" rx="12" ry="5"/><ellipse cx="552" cy="324" rx="14" ry="5"/><ellipse cx="540" cy="318" rx="9" ry="4"/></g>
+      <g fill="#f7c14a" opacity=".8"><ellipse cx="533" cy="321" rx="3" ry="1.4"/><ellipse cx="556" cy="323" rx="4" ry="1.5"/></g>
+      <!-- flames -->
+      <g class="sk-fire">
+        <g class="sk-flame f1" style="transform-origin:530px 322px">
+          <path d="M530 322 C516 310 518 296 526 286 C524 296 530 300 532 294 C536 282 528 274 536 262 C540 276 550 282 546 298 C544 310 540 316 530 322 Z" fill="url(#skFlameA)"/>
+        </g>
+        <g class="sk-flame f2" style="transform-origin:556px 324px">
+          <path d="M556 324 C542 312 548 296 552 288 C551 298 557 300 558 292 C561 280 555 272 562 264 C566 278 574 284 570 300 C568 312 566 318 556 324 Z" fill="url(#skFlameA)"/>
+        </g>
+        <g class="sk-flame f3" style="transform-origin:544px 324px">
+          <path d="M544 324 C534 314 536 302 542 294 C542 302 546 304 548 298 C551 288 546 284 551 276 C555 288 560 292 558 304 C556 314 552 318 544 324 Z" fill="url(#skFlameB)"/>
+        </g>
+        <g class="sk-flame f4" style="transform-origin:545px 324px">
+          <path d="M545 324 C539 316 540 308 544 302 C544 308 547 310 548 306 C550 300 547 296 550 290 C553 300 556 302 555 310 C554 316 551 320 545 324 Z" fill="#fff6cc" opacity=".9"/>
+        </g>
+      </g>
+      <!-- a little glow bleeding past the flames -->
+      <ellipse cx="545" cy="300" rx="34" ry="30" fill="#f7c14a" opacity=".22" filter="url(#skBlurSm)"/>
+    </g>
+    <!-- door frame, swung open to the left -->
+    <rect x="512" y="262" width="66" height="66" rx="4" fill="none" stroke="#0a0c0e" stroke-width="4"/>
+    <rect x="514" y="264" width="62" height="62" rx="3" fill="none" stroke="#4a4f55" stroke-width="1.2"/>
+    <g transform="translate(512 262) skewY(-8)">
+      <rect x="-58" y="6" width="58" height="66" rx="4" fill="#26292d" stroke="#0a0c0e" stroke-width="3.5"/>
+      <rect x="-52" y="12" width="46" height="54" rx="3" fill="none" stroke="#4a4f55" stroke-width="1.2"/>
+      <rect x="-48" y="34" width="18" height="5" rx="2.5" fill="#6b7178" stroke="#0a0c0e" stroke-width="1.5"/>
+    </g>
+    <!-- damper on the end -->
+    <g transform="translate(604 292)">
+      <circle r="17" fill="#26292d" stroke="#0a0c0e" stroke-width="3.5"/>
+      <circle r="11" fill="#15181b" stroke="#4a4f55" stroke-width="1"/>
+      <path d="M-8 -5h16M-8 0h16M-8 5h16" stroke="#0a0c0e" stroke-width="2"/>
+      <path d="M0 -17 v-8" stroke="#0a0c0e" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <!-- firebox handle -->
+    <path d="M540 246 h34" stroke="#0a0c0e" stroke-width="7" stroke-linecap="round"/>
+    <path d="M540 246 h34" stroke="#6b7178" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- ===== embers ===== -->
+  <g class="sk-embers" fill="#f7c14a">
+    <circle class="sk-ember e1" cx="522" cy="250" r="2.6"/>
+    <circle class="sk-ember e2" cx="500" cy="236" r="2"/>
+    <circle class="sk-ember e3" cx="536" cy="228" r="2.4"/>
+    <circle class="sk-ember e4" cx="486" cy="214" r="1.8"/>
+    <circle class="sk-ember e5" cx="514" cy="206" r="2.2"/>
+    <circle class="sk-ember e6" cx="548" cy="214" r="1.6"/>
+  </g>
+</svg>
+
     </div>
   </div>
 </header>
@@ -206,6 +366,8 @@
   </div>
 </section>
 
+<div class="strip" aria-hidden="true"><div class="wrap"><span id="stripLine">One butt or a thousand. Same flavor every time.</span></div></div>
+
 <footer class="site"><div class="wrap"><span id="footName"></span> · northhallbbq.com</div></footer>
 
 <script>
@@ -240,10 +402,10 @@ function pieceWord(p, n) { return n === 1 ? p.piece : p.pieces; }
 function cookCard(c) {
   const live = c.proteins.filter(p => p.total > 0);
   const openLeft = live.filter(p => !p.sold_out).reduce((a, p) => a + p.whole_available, 0);
-  const badge = c.sold_out ? '<span class="badge out">Sold out</span>'
-    : c.closed ? '<span class="badge grey">Orders closed</span>'
-    : openLeft <= 2 ? `<span class="badge low">Almost gone</span>`
-    : '<span class="badge open">Taking orders</span>';
+  const badge = c.sold_out ? '<span class="badge out"><span>Sold out</span></span>'
+    : c.closed ? '<span class="badge grey"><span>Orders closed</span></span>'
+    : openLeft <= 2 ? `<span class="badge low"><span>Almost gone</span></span>`
+    : '<span class="badge open"><span>Taking orders</span></span>';
 
   // Each protein counts down on its own, so you can see at a glance that the
   // brisket is gone but there's still pork on the pit.
@@ -259,11 +421,19 @@ function cookCard(c) {
         ? `<div class="psub">or about ${p.lbs_available} lbs</div>` : ''}
     </div>`).join('');
 
+  // the giant date, the way the flyers set "7/23": weekday as an eyebrow,
+  // then the day itself huge
+  const d = new Date(c.cook_date + 'T12:00:00');
+  const dow = d.toLocaleDateString('en-US', { weekday: 'long' });
+  const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
   return `
     <button class="cook ${c.sold_out || c.closed ? 'sold' : ''}" data-id="${c.cook_date_id}"
             aria-pressed="${cookId === c.cook_date_id}" ${c.sold_out || c.closed ? 'disabled' : ''}>
-      <div class="date">${fmtDate(c.cook_date)}</div>
       ${badge}
+      <div class="date">
+        <span class="dow">${dow}</span>
+        <span class="big">${mon} ${d.getDate()}<small>${d.getFullYear()}</small></span>
+      </div>
       <div class="pcounts">${counters}</div>
       ${c.note ? `<p class="small muted" style="margin:10px 0 0">${c.note}</p>` : ''}
       <div class="clock" data-close="${c.orders_close_at}"></div>
