@@ -153,10 +153,12 @@
         <div id="supLow"></div>
         <div style="overflow-x:auto"><div id="supTable" data-region="supplies"></div></div>
 
-        <h3 style="font-size:15px;margin-top:22px">Where you buy it</h3>
-        <p class="small muted" style="margin-top:-4px">Pick a supplier and the pantry gives you a
-        one&#8209;click price check. Paste the exact product page once and it'll go straight there;
-        without one it searches, or opens the ordering site so you can look it up. Saved with the shelf.</p>
+        <h3 style="font-size:15px;margin-top:22px">How you buy it</h3>
+        <p class="small muted" style="margin-top:-4px">Rub comes in a container and gets used by the
+        ounce, so say how much is in one and logging a purchase does the arithmetic. Pick a supplier
+        and you also get a one&#8209;click price check &mdash; paste the exact product page once and
+        it'll go straight there; without one it searches, or opens the ordering site so you can look
+        it up. All of it saves with the shelf.</p>
         <div id="supSource" data-region="supplies"></div>
 
         <button class="btn ghost sm" id="addSupplyItem" type="button" style="margin-top:10px">+ Add an item</button>
@@ -170,7 +172,7 @@
         <div class="row" style="align-items:flex-end">
           <div class="field" style="flex:1 1 180px"><label for="buySupply">Item</label>
             <select id="buySupply"></select></div>
-          <div class="field" style="flex:0 0 130px"><label for="buyQty">How many</label>
+          <div class="field" style="flex:0 0 160px"><label for="buyQty" id="buyQtyLabel">How many</label>
             <input id="buyQty" type="number" min="0" step="0.01"></div>
           <div class="field" style="flex:0 0 140px"><label for="buyCost">What you paid ($)</label>
             <input id="buyCost" type="number" min="0" step="0.01"></div>
@@ -179,6 +181,7 @@
           <div class="field" style="flex:0 0 auto"><button class="btn sm" id="logPurchase" type="button">Log it</button></div>
         </div>
         <div id="buyMsg"></div>
+        <div class="small muted" id="buyMath" style="margin-top:6px"></div>
         <h3 style="font-size:15px;margin-top:20px">Recent receipts</h3>
         <div id="purchaseList" class="small muted"></div>
       </div>
@@ -895,7 +898,7 @@ function renderSupplies(bg) {
       <td><button class="btn ghost sm" type="button" data-sxrm="${i}">Remove</button></td>
     </tr>`).join('')}
   </table>
-  <p class="small muted" style="margin-top:6px">A brisket doesn't eat the same wrap as a butt, so usage
+  <p class="small muted" style="margin-top:6px">A brisket doesn't need, or use the same wrap as a butt, so usage
   is set per item on the pit. Leave a column at zero if that supply doesn't apply.</p>`;
 
   $('#supTable').querySelectorAll('[data-sx]').forEach(el =>
@@ -927,12 +930,21 @@ function renderSupplies(bg) {
 
   renderSources();
 
+  const keep = $('#buySupply').value;
   $('#buySupply').innerHTML = SUP.supplies.filter(s => s.id)
-    .map(s => `<option value="${s.id}">${s.name} (${s.unit})</option>`).join('');
+    .map(s => `<option value="${s.id}">${esc(s.name)} (${esc(s.unit)})</option>`).join('');
+  if (keep) $('#buySupply').value = keep;
+  buyMath();
 
   $('#purchaseList').innerHTML = SUP.purchases.length
-    ? SUP.purchases.map(p => `<div>${p.purchased_at.slice(0, 10)} — ${fmtQty(p.qty)} ${p.unit || ''}
-        ${p.name || '(removed)'} for <strong>${money(p.total_cents)}</strong>${p.note ? ' · ' + p.note : ''}</div>`).join('')
+    ? SUP.purchases.map(p => {
+        // "6 containers (156 oz)" rather than flattening it to the 156
+        const how = p.packs > 0
+          ? `${fmtQty(p.packs)} ${esc(p.pack_unit || 'pack')}${p.packs === 1 ? '' : 's'} (${fmtQty(p.qty)} ${esc(p.unit || '')})`
+          : `${fmtQty(p.qty)} ${esc(p.unit || '')}`;
+        return `<div>${p.purchased_at.slice(0, 10)} — ${how}
+        ${esc(p.name) || '(removed)'} for <strong>${money(p.total_cents)}</strong>${p.note ? ' · ' + esc(p.note) : ''}</div>`;
+      }).join('')
     : '<div>No receipts logged yet.</div>';
 }
 
@@ -974,6 +986,11 @@ function renderSources() {
     const sup = SUPPLIERS.find(x => x.key && x.key === s.supplier);
     return `<tr${s.active ? '' : ' style="opacity:.5"'}>
       <td style="white-space:nowrap">${esc(s.name) || '<span class="muted">(unnamed)</span>'}</td>
+      <td style="white-space:nowrap"><input type="number" min="0" step="0.01" style="width:74px"
+          placeholder="0" value="${s.pack_qty > 0 ? s.pack_qty : ''}" data-ux="${i}" data-f="pack_qty">
+        <span class="small muted">${esc(s.unit || 'unit')} per</span>
+        <input type="text" style="width:96px" placeholder="container"
+          value="${esc(s.pack_unit || '')}" data-ux="${i}" data-f="pack_unit"></td>
       <td><select style="min-width:200px" data-ux="${i}" data-f="supplier">${SUPPLIERS.map(x =>
         `<option value="${x.key}"${(s.supplier || '') === x.key ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td>
       <td style="width:100%"><input type="url" style="width:100%;min-width:200px"
@@ -985,14 +1002,18 @@ function renderSources() {
 
   $('#supSource').innerHTML = SUP.supplies.length
     ? `<div style="overflow-x:auto"><table>
-         <tr><th>Item</th><th>Supplier</th><th>Product page</th><th>Price check</th></tr>
+         <tr><th>Item</th><th>Bought as</th><th>Supplier</th><th>Product page</th><th>Price check</th></tr>
          ${rows}</table></div>`
     : '<p class="small muted">Add an item above and it\u2019ll show up here.</p>';
 
   $('#supSource').querySelectorAll('[data-ux]').forEach(el =>
     el.addEventListener('input', () => {
       const i = el.dataset.ux;
-      SUP.supplies[i][el.dataset.f] = el.value.trim();
+      SUP.supplies[i][el.dataset.f] = el.dataset.f === 'pack_qty'
+        ? Number(el.value) || 0
+        : el.value.trim();
+      // the purchase form's wording and its arithmetic both hang off this
+      if (el.dataset.f === 'pack_qty' || el.dataset.f === 'pack_unit') buyMath();
       // The link is derived from both fields and has to keep up. Changing the
       // supplier redraws the block; typing a URL only repaints that one cell,
       // because rebuilding the block would pull focus out of the field.
@@ -1002,11 +1023,50 @@ function renderSources() {
     }));
 }
 
+/* An item can be bought in one unit and used in another -- rub by the
+   container, used by the ounce. The form asks for whatever you actually
+   handed money for and shows what lands on the shelf, so there's no arithmetic
+   to do in your head at the counter. The conversion itself happens server-side;
+   this is only the preview. */
+const selectedSupply = () => {
+  const id = Number($('#buySupply').value);
+  return SUP.supplies.find(x => x.id === id) || null;
+};
+// a per-unit price can be a fraction of a cent -- $0.0862 an ounce is real
+const perUnit = (c) => '$' + (c / 100).toFixed(4).replace(/(\.\d\d)(\d*?)0+$/, '$1$2').replace(/\.$/, '');
+
+function buyMath() {
+  const lbl = $('#buyQtyLabel'), out = $('#buyMath');
+  if (!lbl || !out) return;
+  const s = selectedSupply();
+  if (!s) { lbl.textContent = 'How many'; out.textContent = ''; return; }
+
+  const pack = Number(s.pack_qty) || 0;
+  const packName = (s.pack_unit || '').trim() || 'pack';
+  lbl.textContent = pack > 0 ? `How many ${packName}s` : `How many (${s.unit})`;
+
+  const n = Number($('#buyQty').value) || 0;
+  const paid = cents($('#buyCost').value) || 0;
+  if (!(n > 0)) { out.textContent = ''; return; }
+
+  const units = pack > 0 ? n * pack : n;
+  const bits = [pack > 0
+    ? `${fmtQty(n)} × ${fmtQty(pack)} ${s.unit} = ${fmtQty(units)} ${s.unit} onto the shelf`
+    : `${fmtQty(units)} ${s.unit} onto the shelf`];
+  // "per", not "a" -- the unit is free text, and "a oz" reads wrong while
+  // "an ft" would be worse
+  if (paid > 0) bits.push(`${perUnit(paid / units)} per ${s.unit}`);
+  out.textContent = bits.join('  ·  ');
+}
+$('#buySupply').addEventListener('change', buyMath);
+$('#buyQty').addEventListener('input', buyMath);
+$('#buyCost').addEventListener('input', buyMath);
+
 $('#addSupplyItem').addEventListener('click', () => {
   const per = {}; PROTEINS.forEach(p => per[p.id] = 0);
   SUP.supplies.push({ name: '', unit: 'unit', on_hand: 0, unit_cost_cents: 0,
                       per_piece: per, per_cook: 0, low_at: 0, active: 1,
-                      supplier: '', item_url: '' });
+                      supplier: '', item_url: '', pack_qty: 0, pack_unit: '' });
   renderSupplies();
 });
 
@@ -1028,12 +1088,13 @@ $('#saveSupplies').addEventListener('click', async () => {
 
 $('#logPurchase').addEventListener('click', async () => {
   try {
-    await post(`/api/admin/supplies/${$('#buySupply').value}/purchase`, {
-      qty: Number($('#buyQty').value),
-      total_cents: cents($('#buyCost').value),
-      note: $('#buyNote').value,
-    });
-    $('#buyQty').value = ''; $('#buyCost').value = ''; $('#buyNote').value = '';
+    const sel = selectedSupply();
+    const body = { total_cents: cents($('#buyCost').value), note: $('#buyNote').value };
+    // packs when it has a pack size, so the server does the one conversion
+    if (sel && Number(sel.pack_qty) > 0) body.packs = Number($('#buyQty').value);
+    else body.qty = Number($('#buyQty').value);
+    await post(`/api/admin/supplies/${$('#buySupply').value}/purchase`, body);
+    $('#buyQty').value = ''; $('#buyCost').value = ''; $('#buyNote').value = ''; buyMath();
     $('#buyMsg').innerHTML = '<div class="notice ok">Logged.</div>';
     setTimeout(() => $('#buyMsg').innerHTML = '', 2500);
     await loadSupplies();

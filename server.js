@@ -751,7 +751,7 @@ app.post('/api/admin/reorder/:table', requireAdmin, (req, res) => {
 app.get('/api/admin/supplies', requireAdmin, (req, res) => {
   const rows = shelf();
   const purchases = db.prepare(
-    `SELECT p.*, s.name, s.unit FROM supply_purchases p
+    `SELECT p.*, s.name, s.unit, s.pack_unit FROM supply_purchases p
      LEFT JOIN supplies s ON s.id = p.supply_id
      ORDER BY p.id DESC LIMIT 25`
   ).all();
@@ -762,7 +762,7 @@ app.get('/api/admin/supplies', requireAdmin, (req, res) => {
 app.post('/api/admin/supplies', requireAdmin, (req, res) => {
   try {
     const { id, name, unit, per_piece, per_cook, low_at, on_hand, unit_cost_cents,
-            active, sort_order, supplier, item_url } = req.body || {};
+            active, sort_order, supplier, item_url, pack_qty, pack_unit } = req.body || {};
     if (!String(name || '').trim()) return res.status(400).json({ error: 'Give it a name.' });
     const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
     // This comes back out as an href in Pit Boss, so anything that isn't plain
@@ -777,6 +777,8 @@ app.post('/api/admin/supplies', requireAdmin, (req, res) => {
     };
     const shop = String(supplier || '').trim().slice(0, 40);
     const shopUrl = safeUrl(item_url);
+    const packQty = Math.max(0, num(pack_qty));
+    const packUnit = String(pack_unit || '').trim().slice(0, 24);
     // pork's rate still fills the legacy per_butt column so nothing reads stale
     const porkId = (db.prepare("SELECT id FROM proteins WHERE slug = 'pork'").get() || {}).id;
     const perButt = porkId && per_piece ? num(per_piece[porkId]) : 0;
@@ -791,18 +793,21 @@ app.post('/api/admin/supplies', requireAdmin, (req, res) => {
       db.prepare(
         `UPDATE supplies SET name=?, unit=?, per_butt=?, per_cook=?, low_at=?,
                 on_hand=?, unit_cost_cents=?, active=?, sort_order=?,
-                supplier=?, item_url=? WHERE id=?`
+                supplier=?, item_url=?, pack_qty=?, pack_unit=? WHERE id=?`
       ).run(String(name).trim(), String(unit || 'unit').trim(), perButt, num(per_cook),
             num(low_at), num(on_hand), num(unit_cost_cents),
-            active === 0 || active === false ? 0 : 1, order, shop, shopUrl, supplyId);
+            active === 0 || active === false ? 0 : 1, order, shop, shopUrl,
+            packQty, packUnit, supplyId);
     } else {
       const info = db.prepare(
         `INSERT INTO supplies (name, unit, on_hand, unit_cost_cents, per_butt, per_cook,
-                               low_at, active, sort_order, supplier, item_url)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+                               low_at, active, sort_order, supplier, item_url,
+                               pack_qty, pack_unit)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
       ).run(String(name).trim(), String(unit || 'unit').trim(), num(on_hand),
             num(unit_cost_cents), perButt, num(per_cook), num(low_at),
-            active === 0 || active === false ? 0 : 1, num(sort_order), shop, shopUrl);
+            active === 0 || active === false ? 0 : 1, num(sort_order), shop, shopUrl,
+            packQty, packUnit);
       supplyId = Number(info.lastInsertRowid);
     }
     if (per_piece) setRates(supplyId, per_piece);
@@ -821,12 +826,28 @@ app.delete('/api/admin/supplies/:id', requireAdmin, (req, res) => {
 // falls out of that, so cook costs follow what you actually spend.
 app.post('/api/admin/supplies/:id/purchase', requireAdmin, (req, res) => {
   try {
-    const { qty, total_cents, note } = req.body || {};
-    const q = Number(qty);
+    const { qty, packs, total_cents, note } = req.body || {};
+    const sup = db.prepare('SELECT pack_qty FROM supplies WHERE id = ?').get(Number(req.params.id));
+    if (!sup) return res.status(404).json({ error: 'No such supply.' });
+
+    // You buy rub by the container and use it by the ounce. When the item has
+    // a pack size, the form sends packs and the conversion happens HERE, once,
+    // rather than in the browser -- the stored quantity and the average cost
+    // both have to come off the same number.
+    const packSize = Number(sup.pack_qty) || 0;
+    let q, howManyPacks = 0;
+    if (packs !== undefined && packs !== null && packs !== '') {
+      const p = Number(packs);
+      if (!Number.isFinite(p) || p <= 0) return res.status(400).json({ error: 'How many did you buy?' });
+      howManyPacks = p;
+      q = packSize > 0 ? p * packSize : p;
+    } else {
+      q = Number(qty);
+    }
     if (!Number.isFinite(q) || q <= 0) return res.status(400).json({ error: 'How many did you buy?' });
     const t = Number(total_cents);
     if (!Number.isFinite(t) || t < 0) return res.status(400).json({ error: 'What did it cost?' });
-    res.json(recordPurchase(Number(req.params.id), q, t, note));
+    res.json(recordPurchase(Number(req.params.id), q, t, note, howManyPacks));
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
