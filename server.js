@@ -64,6 +64,9 @@ function paymentMode() {
 }
 
 // ---------------------------------------------------------------- public API
+app.get('/fundraiser', (req, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'fundraiser.html')));
+
 app.get('/api/config', (req, res) => {
   const s = allSettings();
   res.json({
@@ -109,6 +112,83 @@ app.get('/api/products', (req, res) => {
         ORDER BY x.sort_order, x.id, pr.sort_order, pr.id`
     ).all()
   );
+});
+
+// ---------------------------------------------------------------------------
+// Numbers behind the fundraiser estimator.
+//
+// Everything here is a STARTING POINT the group can type over -- the page is a
+// planning tool, not a quote. Where the pantry and the freezer have real
+// figures in them we hand those over so the estimate sharpens as the books
+// fill in; where they're still zero we fall back to a published typical and
+// say so, because showing a group "$0.00 a pound" is worse than showing them a
+// number labelled as a guess.
+app.get('/api/estimator', (req, res) => {
+  const s = allSettings();
+  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+  // a value from the books if there is one, otherwise a sane typical
+  const pick = (live, typical) =>
+    live > 0 ? { value: live, source: 'site' } : { value: typical, source: 'typical' };
+  // a setting read in dollars, kept in cents; zero is a real answer, not a miss
+  const dollars = (v, dflt) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : dflt;
+  };
+  const atLeastOne = (v, dflt) => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) && n > 0 ? n : dflt;
+  };
+
+  const pork = db.prepare("SELECT * FROM proteins WHERE slug = 'pork'").get();
+  const whole = db.prepare("SELECT * FROM products WHERE slug = 'whole-butt'").get();
+
+  // What a raw butt weighs and what a pound of it costs, from the meat runs.
+  const rawLbs = pork ? num(pork.avg_lbs) : 0;
+  const lbCost = pork && rawLbs > 0 ? num(pork.unit_cost_cents) / rawLbs : 0;
+
+  // Supplies split two ways: what each butt eats (wrap, a pan, rub) and what
+  // the cook eats whatever the count is (fuel). The second can't be per-butt
+  // until you know how many are going on, so the page divides it itself.
+  let perButt = 0, perCook = 0;
+  const rows = db.prepare(
+    `SELECT s.per_cook, s.unit_cost_cents, COALESCE(r.per_piece, 0) AS per_piece
+       FROM supplies s
+       LEFT JOIN supply_rates r ON r.supply_id = s.id AND r.protein_id = ?
+      WHERE s.active = 1`
+  ).all(pork ? pork.id : 0);
+  for (const r of rows) {
+    perButt += num(r.per_piece) * num(r.unit_cost_cents);
+    perCook += num(r.per_cook) * num(r.unit_cost_cents);
+  }
+
+  res.json({
+    business_name: s.business_name,
+    contact_email: s.contact_email,
+    contact_phone: s.contact_phone,
+    piece: pork ? pork.piece : 'butt',
+    pieces: pork ? pork.pieces : 'butts',
+    // finished pulled pounds off one butt -- what a group selling by the pound
+    // needs, and a sanity check on the whole-butt price
+    yield_lbs: pick(pork ? num(pork.yield_lbs) : 0, 5),
+    raw_lbs: pick(rawLbs, 8),
+    pork_lb_cents: pick(Math.round(lbCost), 199),
+    supplies_butt_cents: pick(Math.round(perButt), 250),
+    supplies_cook_cents: pick(Math.round(perCook), 2200),
+    // What you charge a group per butt to cook it, ON TOP of their meat and
+    // supplies -- not the retail price, which already carries both. It steps
+    // down once a cook gets big, so it goes over as a rule rather than a
+    // number: a dollar a butt to the break, fifty cents after.
+    cook_fee: {
+      // settings are kept in dollars so the Pit Boss form stays readable;
+      // a deliberate 0 has to survive, so these aren't `|| default`
+      first_cents: dollars(s.fundraiser_fee_first, 100),
+      break_at:    atLeastOne(s.fundraiser_fee_break_at, 250),
+      after_cents: dollars(s.fundraiser_fee_after, 50),
+    },
+    // what the site sells a whole butt for, as a starting sell price
+    list_price_cents: pick(whole ? num(whole.price_cents) : 0, 5000),
+  });
 });
 
 // What's on the pit, with what's in the freezer behind it -- the cook form
@@ -682,9 +762,21 @@ app.get('/api/admin/supplies', requireAdmin, (req, res) => {
 app.post('/api/admin/supplies', requireAdmin, (req, res) => {
   try {
     const { id, name, unit, per_piece, per_cook, low_at, on_hand, unit_cost_cents,
-            active, sort_order } = req.body || {};
+            active, sort_order, supplier, item_url } = req.body || {};
     if (!String(name || '').trim()) return res.status(400).json({ error: 'Give it a name.' });
     const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+    // This comes back out as an href in Pit Boss, so anything that isn't plain
+    // http(s) -- javascript:, data:, a typo -- is dropped rather than stored.
+    const safeUrl = (v) => {
+      const raw = String(v || '').trim();
+      if (!raw) return '';
+      try {
+        const u = new URL(raw);
+        return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : '';
+      } catch { return ''; }
+    };
+    const shop = String(supplier || '').trim().slice(0, 40);
+    const shopUrl = safeUrl(item_url);
     // pork's rate still fills the legacy per_butt column so nothing reads stale
     const porkId = (db.prepare("SELECT id FROM proteins WHERE slug = 'pork'").get() || {}).id;
     const perButt = porkId && per_piece ? num(per_piece[porkId]) : 0;
@@ -698,17 +790,19 @@ app.post('/api/admin/supplies', requireAdmin, (req, res) => {
         ? (cur ? cur.sort_order : 0) : num(sort_order);
       db.prepare(
         `UPDATE supplies SET name=?, unit=?, per_butt=?, per_cook=?, low_at=?,
-                on_hand=?, unit_cost_cents=?, active=?, sort_order=? WHERE id=?`
+                on_hand=?, unit_cost_cents=?, active=?, sort_order=?,
+                supplier=?, item_url=? WHERE id=?`
       ).run(String(name).trim(), String(unit || 'unit').trim(), perButt, num(per_cook),
             num(low_at), num(on_hand), num(unit_cost_cents),
-            active === 0 || active === false ? 0 : 1, order, supplyId);
+            active === 0 || active === false ? 0 : 1, order, shop, shopUrl, supplyId);
     } else {
       const info = db.prepare(
-        `INSERT INTO supplies (name, unit, on_hand, unit_cost_cents, per_butt, per_cook, low_at, active, sort_order)
-         VALUES (?,?,?,?,?,?,?,?,?)`
+        `INSERT INTO supplies (name, unit, on_hand, unit_cost_cents, per_butt, per_cook,
+                               low_at, active, sort_order, supplier, item_url)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)`
       ).run(String(name).trim(), String(unit || 'unit').trim(), num(on_hand),
             num(unit_cost_cents), perButt, num(per_cook), num(low_at),
-            active === 0 || active === false ? 0 : 1, num(sort_order));
+            active === 0 || active === false ? 0 : 1, num(sort_order), shop, shopUrl);
       supplyId = Number(info.lastInsertRowid);
     }
     if (per_piece) setRates(supplyId, per_piece);

@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fundraiser estimator — North Hall BBQ</title>
+<meta name="description" content="Work out what your church, school or ball team will clear on a Boston butt fundraiser. Start from a goal or from a number of butts.">
+<link rel="icon" type="image/png" sizes="32x32" href="brand/favicon-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="brand/favicon-64.png">
+<link rel="apple-touch-icon" href="brand/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Permanent+Marker&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+/* ---- the estimator ------------------------------------------------------ */
+.modes{display:flex;gap:9px;flex-wrap:wrap;margin:4px 0 18px}
+.modes .pill{flex:1 1 200px;text-align:center;padding:12px 16px}
+
+.bigin{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+/* display:flex beats the hidden attribute, so both questions showed at once */
+.bigin[hidden]{display:none}
+.bigin label{margin:0;font-size:15px;flex:1 1 220px}
+.bigin .fieldwrap{position:relative;flex:0 0 auto}
+.bigin input{font-family:var(--font-head);font-size:30px;font-weight:600;width:190px;
+  padding:10px 14px;text-align:right}
+.bigin .pre{position:absolute;left:14px;top:50%;transform:translateY(-50%);
+  font-family:var(--font-head);font-size:24px;color:var(--muted);pointer-events:none}
+.bigin input.money{padding-left:34px}
+
+/* the assumptions: a plain grid of small money fields */
+.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px 18px;margin-top:6px}
+.nums .f label{display:block;margin-bottom:5px}
+.nums .f .hint{display:block;font-weight:400;color:var(--muted);font-size:13px;
+  text-transform:none;letter-spacing:0;margin-top:2px}
+.nums .f .wrapin{position:relative}
+.nums .f .wrapin .pre,.nums .f .wrapin .post{position:absolute;top:50%;transform:translateY(-50%);
+  color:var(--muted);font-size:14.5px;pointer-events:none}
+.nums .f .wrapin .pre{left:12px}
+.nums .f .wrapin .post{right:12px}
+.nums .f input{width:100%;box-sizing:border-box;font-variant-numeric:tabular-nums}
+.nums .f input.money{padding-left:26px}
+.nums .f input.unit{padding-right:46px}
+.tagsrc{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;
+  font-family:var(--font-head);font-size:11px;font-weight:500;letter-spacing:.06em;
+  text-transform:uppercase;vertical-align:2px}
+.tagsrc.site{background:#e4efe6;color:var(--green-d)}
+.tagsrc.typical{background:#f6e7d6;color:#8c4a1e}
+.rule{margin:0;padding:11px 14px;border:1px dashed var(--line);border-radius:9px;
+  background:#fbfaf8;font-family:var(--font-head);font-size:15.5px;font-weight:500;
+  color:var(--ink);line-height:1.4}
+.rule b{color:var(--ember-deep)}
+
+/* the answer */
+.verdict{font-family:var(--font-head);font-size:clamp(19px,3.4vw,25px);font-weight:500;
+  line-height:1.35;color:#fff;margin:0 0 18px;position:relative;z-index:1}
+.verdict b{color:var(--ember-hot)}
+.figure{position:relative;z-index:1;margin:0 0 6px}
+.figure .n{font-family:var(--font-head);font-size:clamp(52px,12vw,84px);line-height:.92;
+  font-weight:700;letter-spacing:-.01em;
+  background:linear-gradient(170deg,#ffe38a 0%,var(--ember-hot) 45%,var(--ember-mid) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.25))}
+.figure .cap{display:block;font-family:var(--font-head);text-transform:uppercase;
+  letter-spacing:.08em;font-size:14px;color:#cfe0d4;margin-top:6px}
+
+.stats{position:relative;z-index:1;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:12px;margin-top:22px;
+  padding-top:18px;border-top:1px solid rgba(255,255,255,.16)}
+.stats div{text-align:center}
+.stats .v{display:block;font-family:var(--font-head);font-size:24px;font-weight:600;color:#fff;
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.stats .k{display:block;font-family:var(--font-head);text-transform:uppercase;
+  letter-spacing:.07em;font-size:12.5px;color:#bdd0c3;margin-top:4px;line-height:1.3}
+
+.bd{width:100%;border-collapse:collapse;font-size:14.5px;margin-top:4px}
+.bd td{padding:9px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.bd td:last-child{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;
+  font-weight:600;padding-left:14px}
+.bd tr.sum td{border-bottom:0;border-top:2px solid var(--ink);font-weight:700;font-size:16px;
+  padding-top:12px}
+.bd tr.neg td:last-child{color:var(--ember-deep)}
+.bd .sub{display:block;color:var(--muted);font-size:13px;font-weight:400}
+
+@media (max-width:560px){
+  .bigin input{width:100%}
+  .bigin .fieldwrap{flex:1 1 100%}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+</style>
+</head>
+<body>
+<header class="site slim">
+  <div class="wrap">
+    <div class="hero-lockup slim">
+      <span class="markwrap"><img src="brand/logo-512.png" alt="" class="mark" width="120" height="120"></span>
+      <h1 id="bizName" data-text="North Hall BBQ">North Hall BBQ</h1>
+      <p class="ribbon"><span>Fundraiser estimator</span></p>
+    </div>
+    <nav class="navlinks">
+      <a href="/" class="nav-main">&larr; Back to ordering</a>
+      <a href="admin.html" class="nav-quiet">Owner login</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="card">
+    <h2>What will your group clear?</h2>
+    <p class="muted small" style="margin-top:-6px">
+      Boston butts, sold by your church, school, ball team or non&#8209;profit.
+      Start from the amount you're trying to raise, or from a number of butts you
+      think you can move &mdash; either way you'll see what's left after the meat
+      and the supplies.
+    </p>
+
+    <div class="modes" role="group" aria-label="How do you want to start?">
+      <button type="button" class="pill" id="mGoal"  aria-pressed="true">Start from a goal</button>
+      <button type="button" class="pill" id="mButts" aria-pressed="false">Start from a number of butts</button>
+    </div>
+
+    <div class="bigin" id="goalIn">
+      <label for="goal">How much does your group want to raise?</label>
+      <span class="fieldwrap"><span class="pre">$</span>
+        <input type="number" id="goal" class="money" min="0" step="100" value="2000"
+               inputmode="numeric"></span>
+    </div>
+
+    <div class="bigin" id="buttsIn" hidden>
+      <label for="butts">How many butts can your group sell?</label>
+      <span class="fieldwrap">
+        <input type="number" id="butts" min="1" step="1" value="40" inputmode="numeric"></span>
+    </div>
+  </section>
+
+  <section class="card band" id="answer">
+    <p class="verdict" id="verdict"></p>
+    <p class="figure"><span class="n" id="bigN">&mdash;</span>
+       <span class="cap" id="bigCap">Your group keeps</span></p>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section class="card">
+    <h2>The numbers behind it</h2>
+    <p class="muted small" style="margin-top:-6px">
+      These are starting points &mdash; type over any of them. A
+      <span class="tagsrc site">live</span> figure comes from our own books;
+      a <span class="tagsrc typical">typical</span> one is a normal going rate,
+      so put your real number in if you have it.
+    </p>
+
+    <div class="nums" style="margin-top:16px">
+      <div class="f">
+        <label for="sell">What supporters pay per butt
+          <span class="hint">What your group charges. Most run $60&ndash;$75.</span></label>
+        <span class="wrapin"><span class="pre">$</span>
+          <input type="number" id="sell" class="money" min="0" step="1"></span>
+      </div>
+      <div class="f">
+        <label>What we charge to cook it <span class="tagsrc site">our rate</span>
+          <span class="hint">On top of your meat and supplies. It's the one number here
+            that isn't yours to guess at.</span></label>
+        <p class="rule" id="feeRule"></p>
+      </div>
+      <div class="f">
+        <label for="lb">Pork, per pound <span id="tagLb"></span>
+          <span class="hint">Raw, what the butts cost at the store.</span></label>
+        <span class="wrapin"><span class="pre">$</span>
+          <input type="number" id="lb" class="money" min="0" step="0.01"></span>
+      </div>
+      <div class="f">
+        <label for="raw">Weight of one raw butt <span id="tagRaw"></span>
+          <span class="hint">Bone&#8209;in shoulders usually run 7&ndash;9&nbsp;lbs.</span></label>
+        <span class="wrapin">
+          <input type="number" id="raw" class="unit" min="0" step="0.1"><span class="post">lbs</span></span>
+      </div>
+      <div class="f">
+        <label for="sup">Supplies per butt <span id="tagSup"></span>
+          <span class="hint">Wrap, a pan and rub for each one.</span></label>
+        <span class="wrapin"><span class="pre">$</span>
+          <input type="number" id="sup" class="money" min="0" step="0.25"></span>
+      </div>
+      <div class="f">
+        <label for="fix">One&#8209;time cook costs <span id="tagFix"></span>
+          <span class="hint">Fuel and the like &mdash; the same whether it's 20 butts or 200.</span></label>
+        <span class="wrapin"><span class="pre">$</span>
+          <input type="number" id="fix" class="money" min="0" step="1"></span>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:18px">
+      <button type="button" class="btn ghost sm" id="reset">Put the defaults back</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Where the money goes</h2>
+    <table class="bd" id="bd"></table>
+    <p class="muted small" id="meatNote" style="margin-top:14px"></p>
+  </section>
+
+  <section class="panel">
+    <span class="tab">Ready to talk it through?</span>
+    <div class="body">
+      <p style="margin-top:0">
+        This is an estimate, not a quote &mdash; pork moves around and every group's
+        set&#8209;up is a little different. Send me what you came up with and I'll
+        tell you straight whether the numbers hold.
+      </p>
+      <div class="row" id="ctaRow"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site"><div class="wrap"><p id="foot"></p></div></footer>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const money = (c) => '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money0 = (c) => '$' + Math.round(c / 100).toLocaleString('en-US');
+const num = (el) => { const n = Number(el.value); return Number.isFinite(n) && n >= 0 ? n : 0; };
+
+let D = null;                       // defaults from the server
+let mode = 'goal';
+
+// --- defaults -------------------------------------------------------------
+function badge(where, src) {
+  const el = $(where);
+  if (!el) return;
+  el.className = 'tagsrc ' + src;
+  el.textContent = src === 'site' ? 'live' : 'typical';
+}
+
+function applyDefaults() {
+  $('#sell').value    = Math.max(60, Math.round(D.list_price_cents.value / 100 * 1.3 / 5) * 5);
+  const F = D.cook_fee;
+  $('#feeRule').innerHTML =
+    '<b>' + money(F.first_cents) + '</b> a butt for the first ' +
+    F.break_at.toLocaleString('en-US') + ', then <b>' + money(F.after_cents) +
+    '</b> a butt after that.';
+  $('#lb').value      = (D.pork_lb_cents.value / 100).toFixed(2);
+  $('#raw').value     = D.raw_lbs.value;
+  $('#sup').value     = (D.supplies_butt_cents.value / 100).toFixed(2);
+  $('#fix').value     = Math.round(D.supplies_cook_cents.value / 100);
+  badge('#tagLb',  D.pork_lb_cents.source);
+  badge('#tagRaw', D.raw_lbs.source);
+  badge('#tagSup', D.supplies_butt_cents.source);
+  badge('#tagFix', D.supplies_cook_cents.source);
+  calc();
+}
+
+// --- the sums -------------------------------------------------------------
+// Everything in cents, so 8.4 lbs at $1.99 doesn't drift a penny a butt and
+// then forty cents across a cook.
+function model() {
+  const sellC  = Math.round(num($('#sell')) * 100);
+  const lbC    = Math.round(num($('#lb')) * 100);
+  const rawLbs = num($('#raw'));
+  const supC   = Math.round(num($('#sup')) * 100);
+  const fixC   = Math.round(num($('#fix')) * 100);
+
+  const meatC = Math.round(lbC * rawLbs);
+  // what one butt leaves behind BEFORE the cook fee -- the fee isn't flat, so
+  // it can't just be folded in here
+  const perButtC = meatC + supC;
+  const contribC = sellC - perButtC;
+  return { sellC, lbC, rawLbs, supC, fixC, meatC, perButtC, contribC };
+}
+
+// The cook fee steps down partway through, so a big cook is charged in two
+// pieces. Everything below is written around that rather than a flat rate.
+function feeC(n) {
+  if (!D || n <= 0) return 0;
+  const F = D.cook_fee;
+  return Math.min(n, F.break_at) * F.first_cents +
+         Math.max(0, n - F.break_at) * F.after_cents;
+}
+
+// How many butts it takes to clear `goalC` on top of the fixed costs. The fee
+// is piecewise, so this is solved either side of the break and the answer is
+// kept only if it lands on the side it was solved for.
+function buttsFor(goalC, m) {
+  const F = D.cook_fee;
+  const need = goalC + m.fixC;
+  // below the break, every butt nets its contribution less the full rate
+  const lowRate = m.contribC - F.first_cents;
+  if (lowRate > 0) {
+    const n = Math.ceil(need / lowRate);
+    if (n <= F.break_at) return n;
+  }
+  // past it, the first break_at butts have already paid the higher rate; that
+  // overpayment is a constant carried into the second stretch
+  const highRate = m.contribC - F.after_cents;
+  if (highRate > 0) {
+    const carried = F.break_at * (F.first_cents - F.after_cents);
+    return Math.max(F.break_at + 1, Math.ceil((need + carried) / highRate));
+  }
+  return null;                                   // never gets there
+}
+
+function calc() {
+  const m = model();
+  const goalC = Math.round(num($('#goal')) * 100);
+  // the cheapest the fee ever gets is the lower rate, so if a butt can't clear
+  // that there's no count that works
+  const viable = D ? m.contribC > D.cook_fee.after_cents : m.contribC > 0;
+
+  let n;
+  if (mode === 'butts') {
+    n = Math.max(0, Math.round(num($('#butts'))));
+  } else {
+    n = viable ? (buttsFor(goalC, m) || 0) : 0;
+  }
+
+  const revenueC = m.sellC * n;
+  const meatTotC = m.meatC * n;
+  const supTotC  = m.supC * n;
+  const feeTotC  = feeC(n);
+  const costC    = meatTotC + supTotC + feeTotC + m.fixC;
+  const profitC  = revenueC - costC;
+  const breakeven = viable ? buttsFor(0, m) : null;
+  // the fee moves with the count, so per-butt is an average, not a rate
+  const perButtKeptC = n > 0 ? Math.round(profitC / n) : 0;
+
+  render({ ...m, n, goalC, revenueC, meatTotC, supTotC, feeTotC, costC, profitC,
+           breakeven, perButtKeptC, viable });
+}
+
+function render(r) {
+  const band = $('#answer');
+
+  band.classList.toggle('shy', !r.viable);
+  if (!r.viable) {
+    $('#verdict').innerHTML =
+      'At <b>' + money0(r.sellC) + '</b> a butt you&rsquo;re not clearing the ' +
+      money(r.perButtC + (D ? D.cook_fee.after_cents : 0)) +
+      ' it costs to put one on the pit. Nudge the sell price up, ' +
+      'or the costs down, and the numbers will come back.';
+    $('#bigN').textContent = '—';
+    $('#bigCap').textContent = 'Nothing to keep yet';
+    $('#stats').innerHTML = '';
+  } else {
+    $('#verdict').innerHTML = mode === 'goal'
+      ? 'To clear <b>' + money0(r.goalC) + '</b>, your group needs to sell <b>' +
+        r.n.toLocaleString('en-US') + '</b> ' + (r.n === 1 ? 'butt' : 'butts') +
+        ' at ' + money0(r.sellC) + ' apiece.'
+      : 'Sell <b>' + r.n.toLocaleString('en-US') + '</b> ' + (r.n === 1 ? 'butt' : 'butts') +
+        ' at <b>' + money0(r.sellC) + '</b> apiece and your group keeps what&rsquo;s below.';
+    $('#bigN').textContent = money0(r.profitC);
+    $('#bigCap').textContent = 'Your group keeps';
+
+    const lbsRaw = Math.round(r.rawLbs * r.n);
+    $('#stats').innerHTML = [
+      ['v', r.n.toLocaleString('en-US'), 'Butts to sell'],
+      ['v', money0(r.revenueC), 'Money collected'],
+      ['v', money0(r.costC), 'What it costs'],
+      ['v', money(r.perButtKeptC), 'Kept per butt'],
+      ['v', r.breakeven.toLocaleString('en-US'), 'Break&#8209;even at'],
+      ['v', lbsRaw.toLocaleString('en-US') + ' lbs', 'Pork to buy'],
+    ].map((x) => '<div><span class="v">' + x[1] + '</span><span class="k">' + x[2] + '</span></div>').join('');
+  }
+
+  // the breakdown
+  const rows = [];
+  rows.push(['Money collected<span class="sub">' + r.n.toLocaleString('en-US') + ' &times; ' +
+             money(r.sellC) + '</span>', money(r.revenueC), '']);
+  rows.push(['Pork<span class="sub">' + r.n.toLocaleString('en-US') + ' &times; ' + r.rawLbs +
+             ' lbs at ' + money(r.lbC) + ' a pound</span>', '&minus;' + money(r.meatTotC), 'neg']);
+  rows.push(['Supplies<span class="sub">wrap, pans, rub &mdash; ' + r.n.toLocaleString('en-US') +
+             ' &times; ' + money(r.supC) + '</span>', '&minus;' + money(r.supTotC), 'neg']);
+  if (r.feeTotC > 0 && D) {
+    const F = D.cook_fee, lo = Math.min(r.n, F.break_at), hi = Math.max(0, r.n - F.break_at);
+    const how = hi > 0
+      ? lo.toLocaleString('en-US') + ' &times; ' + money(F.first_cents) + ', then ' +
+        hi.toLocaleString('en-US') + ' &times; ' + money(F.after_cents)
+      : r.n.toLocaleString('en-US') + ' &times; ' + money(F.first_cents);
+    rows.push(['What we charge to cook it<span class="sub">' + how + '</span>',
+               '&minus;' + money(r.feeTotC), 'neg']);
+  }
+  if (r.fixC > 0) {
+    rows.push(['Fuel and one&#8209;time costs<span class="sub">the same at any size</span>',
+               '&minus;' + money(r.fixC), 'neg']);
+  }
+  $('#bd').innerHTML = rows.map((x) =>
+    '<tr' + (x[2] ? ' class="' + x[2] + '"' : '') + '><td>' + x[0] + '</td><td>' + x[1] + '</td></tr>'
+  ).join('') +
+    '<tr class="sum"><td>Your group keeps</td><td>' + money(r.profitC) + '</td></tr>';
+
+  $('#meatNote').innerHTML = r.n > 0
+    ? 'That&rsquo;s about <b>' + Math.round(r.rawLbs * r.n).toLocaleString('en-US') +
+      ' lbs</b> of raw pork, which pulls down to roughly <b>' +
+      Math.round((D ? D.yield_lbs.value : 5) * r.n).toLocaleString('en-US') +
+      ' lbs</b> finished &mdash; enough to feed somewhere around ' +
+      Math.round((D ? D.yield_lbs.value : 5) * r.n * 3).toLocaleString('en-US') +
+      ' sandwiches.'
+    : '';
+
+  cta(r);
+}
+
+// A one-tap way to send me the scenario, so a group doesn't have to retype it.
+function cta(r) {
+  if (!D) return;
+  const lines = [
+    'Here is what the estimator came up with for our group:',
+    '',
+    'Butts: ' + r.n,
+    'We charge per butt: ' + money(r.sellC),
+    'Money collected: ' + money(r.revenueC),
+    'What it costs: ' + money(r.costC),
+    'Our group keeps: ' + money(r.profitC),
+    '',
+    'Our group is: ',
+    'We are hoping to cook on (date): ',
+  ].join('\n');
+
+  const parts = [];
+  if (D.contact_phone) {
+    parts.push('<a class="btn" href="tel:' + D.contact_phone.replace(/[^0-9+]/g, '') + '">Call ' +
+               D.contact_phone + '</a>');
+  }
+  if (D.contact_email) {
+    parts.push('<a class="btn ghost" target="_blank" rel="noopener" href="mailto:' + D.contact_email +
+      '?subject=' + encodeURIComponent('Fundraiser cook — ' + (D.business_name || 'North Hall BBQ')) +
+      '&body=' + encodeURIComponent(lines) + '">Email me these numbers</a>');
+  }
+  $('#ctaRow').innerHTML = parts.join('');
+}
+
+// --- wiring ---------------------------------------------------------------
+function setMode(next) {
+  mode = next;
+  $('#mGoal').setAttribute('aria-pressed', String(next === 'goal'));
+  $('#mButts').setAttribute('aria-pressed', String(next === 'butts'));
+  $('#goalIn').hidden = next !== 'goal';
+  $('#buttsIn').hidden = next === 'goal';
+  calc();
+}
+$('#mGoal').addEventListener('click', () => setMode('goal'));
+$('#mButts').addEventListener('click', () => setMode('butts'));
+$('#reset').addEventListener('click', () => { if (D) applyDefaults(); });
+for (const id of ['goal', 'butts', 'sell', 'lb', 'raw', 'sup', 'fix']) {
+  $('#' + id).addEventListener('input', calc);
+}
+
+(async () => {
+  try {
+    D = await (await fetch('/api/estimator')).json();
+  } catch (e) {
+    // the page still works with sensible numbers if the server is unreachable
+    D = {
+      business_name: 'North Hall BBQ', contact_email: '', contact_phone: '',
+      yield_lbs: { value: 5, source: 'typical' }, raw_lbs: { value: 8, source: 'typical' },
+      pork_lb_cents: { value: 199, source: 'typical' },
+      supplies_butt_cents: { value: 250, source: 'typical' },
+      supplies_cook_cents: { value: 2200, source: 'typical' },
+      cook_fee: { first_cents: 100, break_at: 250, after_cents: 50 },
+      list_price_cents: { value: 5000, source: 'typical' },
+    };
+  }
+  if (D.business_name) {
+    $('#bizName').textContent = D.business_name;
+    $('#bizName').setAttribute('data-text', D.business_name);
+  }
+  $('#foot').textContent = (D.business_name || 'North Hall BBQ') +
+    ' — estimates only. Pork prices move; we’ll confirm before you commit.';
+  applyDefaults();
+})();
+</script>
+</body>
+</html>

@@ -152,6 +152,13 @@
         actually paid. "Per butt" and "per cook" are how fast it goes.</p>
         <div id="supLow"></div>
         <div style="overflow-x:auto"><div id="supTable" data-region="supplies"></div></div>
+
+        <h3 style="font-size:15px;margin-top:22px">Where you buy it</h3>
+        <p class="small muted" style="margin-top:-4px">Pick a supplier and the pantry gives you a
+        one&#8209;click price check. Paste the exact product page once and it'll go straight there;
+        without one it searches, or opens the ordering site so you can look it up. Saved with the shelf.</p>
+        <div id="supSource" data-region="supplies"></div>
+
         <button class="btn ghost sm" id="addSupplyItem" type="button" style="margin-top:10px">+ Add an item</button>
         <button class="btn sm" id="saveSupplies" style="margin-top:10px">Save the shelf</button>
         <span class="small muted" id="supMsg" style="margin-left:8px"></span>
@@ -259,9 +266,11 @@ document.addEventListener('input', e => {
   if (r) dirty.add(r.dataset.region);
 });
 function focusedIn(id) {
-  const el = document.querySelector(`[data-region="${id}"]`);
   const a = document.activeElement;
-  return !!(el && a && el.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+  if (!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return false;
+  // a region can be spread over more than one block -- the pantry is
+  // two tables -- so every one of them has to be checked, not just the first
+  return [...document.querySelectorAll(`[data-region="${id}"]`)].some(el => el.contains(a));
 }
 const busy = id => dirty.has(id) || focusedIn(id);
 const settled = id => dirty.delete(id);
@@ -898,7 +907,11 @@ function renderSupplies(bg) {
         return;
       }
       const f = el.dataset.f;
-      if (f === 'name' || f === 'unit') s[f] = el.value;
+      if (f === 'name' || f === 'unit') {
+        s[f] = el.value;
+        // the "where you buy it" rows show the name and search on it
+        if (f === 'name') renderSources();
+      }
       else if (f === 'cost') s.unit_cost_cents = Number(el.value || 0) * 100;
       else s[f] = Number(el.value);
     }));
@@ -912,6 +925,8 @@ function renderSupplies(bg) {
       s.id ? await loadSupplies() : renderSupplies();
     }));
 
+  renderSources();
+
   $('#buySupply').innerHTML = SUP.supplies.filter(s => s.id)
     .map(s => `<option value="${s.id}">${s.name} (${s.unit})</option>`).join('');
 
@@ -921,10 +936,77 @@ function renderSupplies(bg) {
     : '<div>No receipts logged yet.</div>';
 }
 
+/* Where each supply comes from. Two of these catalogues are behind a customer
+   login, so there's no honest way to search them from out here -- the link
+   opens the ordering site and you search inside it. Pin a product URL and that
+   wins over everything. */
+const SUPPLIERS = [
+  { key: '', name: '\u2014 pick one \u2014' },
+  { key: 'sams', name: "Sam's Club",
+    home: 'https://www.samsclub.com/',
+    search: (q) => 'https://www.samsclub.com/s/' + encodeURIComponent(q) },
+  { key: 'pfg', name: 'Performance Foodservice (PFG)',
+    home: 'https://onlinefoodservice.com/',
+    note: 'searchable once you\u2019re signed in' },
+  { key: 'other', name: 'Somewhere else' },
+];
+
+// Best link available: the pinned product page, then a search, then the front
+// door. Null means there's nothing useful to open yet.
+function priceLink(s) {
+  if (s.item_url) return { href: s.item_url, label: 'Open the item', pinned: true };
+  const sup = SUPPLIERS.find(x => x.key && x.key === s.supplier);
+  if (!sup) return null;
+  if (sup.search && (s.name || '').trim()) {
+    return { href: sup.search(s.name.trim()), label: 'Search ' + sup.name };
+  }
+  if (sup.home) return { href: sup.home, label: 'Open ' + sup.name };
+  return null;
+}
+
+const linkCell = (link) => link
+  ? `<a class="btn ghost sm" target="_blank" rel="noopener noreferrer" href="${esc(link.href)}">${esc(link.label)} \u2197</a>`
+  : '<span class="small muted">\u2014</span>';
+
+function renderSources() {
+  const rows = SUP.supplies.map((s, i) => {
+    const link = priceLink(s);
+    const sup = SUPPLIERS.find(x => x.key && x.key === s.supplier);
+    return `<tr${s.active ? '' : ' style="opacity:.5"'}>
+      <td style="white-space:nowrap">${esc(s.name) || '<span class="muted">(unnamed)</span>'}</td>
+      <td><select style="min-width:200px" data-ux="${i}" data-f="supplier">${SUPPLIERS.map(x =>
+        `<option value="${x.key}"${(s.supplier || '') === x.key ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td>
+      <td style="width:100%"><input type="url" style="width:100%;min-width:200px"
+        placeholder="${sup && sup.note ? esc('paste the item page \u2014 ' + sup.note) : 'paste the product page (optional)'}"
+        value="${esc(s.item_url || '')}" data-ux="${i}" data-f="item_url"></td>
+      <td style="white-space:nowrap" data-link="${i}">${linkCell(link)}</td>
+    </tr>`;
+  }).join('');
+
+  $('#supSource').innerHTML = SUP.supplies.length
+    ? `<div style="overflow-x:auto"><table>
+         <tr><th>Item</th><th>Supplier</th><th>Product page</th><th>Price check</th></tr>
+         ${rows}</table></div>`
+    : '<p class="small muted">Add an item above and it\u2019ll show up here.</p>';
+
+  $('#supSource').querySelectorAll('[data-ux]').forEach(el =>
+    el.addEventListener('input', () => {
+      const i = el.dataset.ux;
+      SUP.supplies[i][el.dataset.f] = el.value.trim();
+      // The link is derived from both fields and has to keep up. Changing the
+      // supplier redraws the block; typing a URL only repaints that one cell,
+      // because rebuilding the block would pull focus out of the field.
+      if (el.dataset.f === 'supplier') return renderSources();
+      const cell = $('#supSource').querySelector(`[data-link="${i}"]`);
+      if (cell) cell.innerHTML = linkCell(priceLink(SUP.supplies[i]));
+    }));
+}
+
 $('#addSupplyItem').addEventListener('click', () => {
   const per = {}; PROTEINS.forEach(p => per[p.id] = 0);
   SUP.supplies.push({ name: '', unit: 'unit', on_hand: 0, unit_cost_cents: 0,
-                      per_piece: per, per_cook: 0, low_at: 0, active: 1 });
+                      per_piece: per, per_cook: 0, low_at: 0, active: 1,
+                      supplier: '', item_url: '' });
   renderSupplies();
 });
 
@@ -1179,6 +1261,9 @@ const SETTING_FIELDS = [
   ['fundraiser_headline', 'Fundraiser section heading (blank hides it)', 'text'],
   ['fundraiser_blurb', 'Fundraiser pitch', 'textarea'],
   ['fundraiser_cta', 'Fundraiser call to action', 'text'],
+  ['fundraiser_fee_first', 'Fundraiser: $ per butt you charge to cook', 'number'],
+  ['fundraiser_fee_break_at', 'Fundraiser: butts before the rate drops', 'number'],
+  ['fundraiser_fee_after', 'Fundraiser: $ per butt after that', 'number'],
   ['yield_lbs_per_butt', 'Pounds of pulled pork per butt', 'number'],
   ['hold_minutes', 'Minutes to hold an unpaid cart', 'number'],
   ['gallery_headline', 'Photo page heading', 'text'],

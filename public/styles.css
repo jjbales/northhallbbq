@@ -22,7 +22,7 @@ h2{font-size:21px} h3{font-size:16px;letter-spacing:.04em}
 a{color:var(--ember-2)}
 .wrap{max-width:960px;margin:0 auto;padding:0 20px}
 .muted{color:var(--muted)}
-.small{font-size:13px}
+.small{font-size:14.5px}
 
 /* header */
 header.site{background:var(--green);color:#f1f4f1;padding:32px 0 28px;
@@ -59,7 +59,7 @@ header.site p{margin:0;color:#d3ded5;font-size:15px}
 .bar span{display:block;height:100%;background:linear-gradient(90deg,var(--green-l),var(--green));
   transition:width .6s cubic-bezier(.4,0,.2,1)}
 
-.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:600;
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600;
   text-transform:uppercase;letter-spacing:.05em;font-family:var(--font-head);
   border:1px solid transparent}
 .badge.open{background:var(--green-pale);color:var(--green);border-color:#cfdcd3}
@@ -72,7 +72,7 @@ header.site p{margin:0;color:#d3ded5;font-size:15px}
 .clock div{background:var(--green-pale);border:1px solid #dde5df;border-radius:8px;padding:6px 10px;
   min-width:58px;text-align:center}
 .clock b{display:block;font-family:var(--font-head);font-size:19px;font-variant-numeric:tabular-nums}
-.clock small{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.clock small{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
 
 /* products */
 .item{display:flex;justify-content:space-between;align-items:center;gap:14px;
@@ -87,7 +87,7 @@ header.site p{margin:0;color:#d3ded5;font-size:15px}
   font:inherit;background:#fff}
 
 /* forms */
-label{display:block;font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+label{display:block;font-size:14px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
 input[type=text],input[type=tel],input[type=email],input[type=number],input[type=date],
 input[type=password],input[type=time],select,textarea{
   width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;
@@ -102,7 +102,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid rgba(45,80,53,.35);out
 .btn:disabled{background:var(--grey);cursor:not-allowed}
 .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
 .btn.ghost:hover{background:var(--green-pale);border-color:var(--green-l)}
-.btn.sm{padding:7px 13px;font-size:13px;border-radius:9px}
+.btn.sm{padding:7px 13px;font-size:14px;border-radius:9px}
 
 .slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
 .slot{border:1px solid var(--line);border-radius:11px;padding:11px;background:#fff;cursor:pointer;
@@ -113,14 +113,14 @@ input:focus,select:focus,textarea:focus{outline:2px solid rgba(45,80,53,.35);out
 
 .total{display:flex;justify-content:space-between;font-size:19px;font-weight:700;
   padding-top:14px;border-top:2px solid var(--line);margin-top:6px}
-.notice{padding:12px 14px;border-radius:11px;font-size:14px;margin:12px 0}
+.notice{padding:12px 14px;border-radius:11px;font-size:14.5px;margin:12px 0}
 .notice.err{background:#f8eaea;color:#7d1c1c;border:1px solid #eccccc}
 .notice.ok{background:var(--green-pale);color:var(--green-d);border:1px solid #cfdcd3}
 .notice.info{background:var(--green-pale);color:var(--green-d);border:1px solid #cfdcd3}
-table{width:100%;border-collapse:collapse;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
 th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-family:var(--font-head);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-footer.site{padding:40px 0;color:var(--muted);font-size:13px;text-align:center}
+th{font-family:var(--font-head);font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+footer.site{padding:40px 0;color:var(--muted);font-size:14px;text-align:center}
 .hide{display:none !important}
 @media (max-width:560px){
   header.site h1{font-size:27px}
@@ -140,11 +140,11 @@ footer.site{padding:40px 0;color:var(--muted);font-size:13px;text-align:center}
 
 /* contact preference */
 .prefbox{border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-top:4px;background:#fbfcfb}
-.prefbox legend{font-family:var(--font-head);font-size:12px;text-transform:uppercase;letter-spacing:.06em;
+.prefbox legend{font-family:var(--font-head);font-size:13px;text-transform:uppercase;letter-spacing:.06em;
   color:var(--muted);padding:0 6px}
 .pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .pill{border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 18px;cursor:pointer;
-  font-family:var(--font-head);font-size:13px;text-transform:uppercase;letter-spacing:.05em;
+  font-family:var(--font-head);font-size:14px;text-transform:uppercase;letter-spacing:.05em;
   color:var(--ink-2);transition:.15s}
 .pill:hover{border-color:var(--green-l)}
 .pill[aria-pressed="true"]{background:var(--green);color:#fff;border-color:var(--green)}
@@ -188,12 +188,12 @@ header.site p{color:#cfe0d4;font-size:clamp(14px,1.6vw,17px);letter-spacing:.01e
 .trust{position:relative;z-index:1;display:grid;
   grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;
   margin:26px auto 0;padding-top:20px;border-top:1px solid rgba(255,255,255,.14)}
-.trust div{text-align:center;color:#d7e3da;font-size:12.5px;line-height:1.35;
+.trust div{text-align:center;color:#d7e3da;font-size:13.5px;line-height:1.35;
   font-family:var(--font-head);text-transform:uppercase;letter-spacing:.07em}
 .trust b{display:block;font-size:20px;color:#fff;letter-spacing:.02em;margin-bottom:3px;
   background:linear-gradient(180deg,var(--ember-hot),var(--ember-deep));
   -webkit-background-clip:text;background-clip:text;color:transparent}
-@media (max-width:560px){ .trust div{font-size:11px} .trust b{font-size:17px} }
+@media (max-width:560px){ .trust div{font-size:12.5px} .trust b{font-size:17px} }
 
 /* headline rules, like the flyer's bracketed callouts */
 .card > h2:first-child{position:relative;padding-bottom:10px;margin-bottom:14px}
@@ -218,7 +218,7 @@ header.site p{color:#cfe0d4;font-size:clamp(14px,1.6vw,17px);letter-spacing:.01e
 .cook.sold .counter .n{background:linear-gradient(170deg,#b9bdb9,#7e847e);
   -webkit-background-clip:text;background-clip:text;color:transparent}
 .counter .of{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.06em;
-  font-size:12.5px;color:var(--ink-2)}
+  font-size:13.5px;color:var(--ink-2)}
 .bar{height:10px;box-shadow:inset 0 1px 2px rgba(0,0,0,.10)}
 .bar span{background:linear-gradient(90deg,var(--ember-mid),var(--ember-deep))}
 
@@ -276,7 +276,7 @@ footer.site{padding:34px 0 44px;border-top:1px solid var(--line);margin-top:30px
 .panel{border:1.5px solid var(--line);border-radius:var(--r);background:var(--card);
   margin:18px 0;overflow:hidden;box-shadow:var(--shadow)}
 .panel > .tab{background:var(--green);color:#fff;font-family:var(--font-head);
-  font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;
+  font-size:14px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;
   padding:9px 20px;display:block;
   clip-path:polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%)}
 .panel .body{padding:18px 20px 20px}
@@ -286,7 +286,7 @@ footer.site{padding:34px 0 44px;border-top:1px solid var(--line);margin-top:30px
 .iconrow:last-child{border-bottom:0}
 .iconrow svg{flex:0 0 auto;width:22px;height:22px;margin-top:1px;color:var(--green)}
 .iconrow .t{font-weight:600;color:var(--ink)}
-.iconrow .s{font-size:13.5px;color:var(--muted)}
+.iconrow .s{font-size:14.5px;color:var(--muted)}
 .iconrow a{color:var(--green-d);text-decoration:none;font-weight:600}
 .iconrow a:hover{text-decoration:underline}
 
@@ -295,7 +295,7 @@ footer.site{padding:34px 0 44px;border-top:1px solid var(--line);margin-top:30px
   header.site{padding:26px 0 24px}
   .brandbar{position:relative;align-items:flex-start}
   /* keep the owner link out of the flow so it can't push the lockup around */
-  .brandbar > a{position:absolute;top:2px;right:0;font-size:12px;opacity:.85}
+  .brandbar > a{position:absolute;top:2px;right:0;font-size:13px;opacity:.85}
   .lockup{align-items:center;gap:12px;padding-right:78px}
   header.site h1{font-size:26px;letter-spacing:.02em}
   header.site p{font-size:13.5px;margin-top:2px}
@@ -341,7 +341,7 @@ header.site h1{position:relative;display:block;color:#fff;
   padding:7px 20px;border-radius:3px;box-shadow:0 6px 18px rgba(0,0,0,.35)}
 .ribbon span{display:inline-block;transform:skewX(9deg);color:#fff;
   font-family:var(--font-head);font-weight:500;text-transform:uppercase;
-  letter-spacing:.045em;font-size:clamp(12px,1.55vw,16px)}
+  letter-spacing:.045em;font-size:clamp(13px,1.6vw,17px)}
 
 /* trust blocks: bordered and notched, like the flyer's panels */
 .trust{border-top:0;gap:12px;margin-top:34px;padding-top:0}
@@ -369,9 +369,9 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
     text-shadow:2px 3px 0 var(--ember-deep), 4px 5px 0 rgba(6,14,9,.55)}
   .lockup{padding-right:0;align-items:flex-start;gap:10px}
   .lockup .mark{width:44px;height:44px;margin-top:2px}
-  .brandbar > a{position:static;display:block;margin-top:14px;font-size:12px;opacity:.85}
+  .brandbar > a{position:static;display:block;margin-top:14px;font-size:13px;opacity:.85}
   .ribbon{padding:6px 13px;transform:skewX(-6deg)}
-  .ribbon span{transform:skewX(6deg);font-size:12px}
+  .ribbon span{transform:skewX(6deg);font-size:13px}
   .trust{margin-top:20px;gap:9px}
   .trust b{font-size:17px}
   .trust div{padding:10px 8px}
@@ -382,20 +382,20 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
 .pcounts{margin:14px 0 4px;display:flex;flex-direction:column;gap:11px}
 .pcount .prow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
   font-family:var(--font-head);letter-spacing:.02em}
-.pcount .pname{text-transform:uppercase;font-size:13px;color:var(--ink-soft)}
+.pcount .pname{text-transform:uppercase;font-size:14px;color:var(--ink-soft)}
 .pcount .pleft{font-size:14px;color:var(--ink)}
 .pcount .pleft b{font-size:21px;color:var(--ember-deep);font-variant-numeric:tabular-nums}
 .pcount .bar{margin-top:5px}
-.pcount .psub{font-size:11.5px;color:var(--ink-soft);margin-top:3px}
+.pcount .psub{font-size:12.5px;color:var(--ink-soft);margin-top:3px}
 .pcount.out{opacity:.48}
-.pcount.out .pleft{color:var(--ink-soft);font-size:13px}
+.pcount.out .pleft{color:var(--ink-soft);font-size:14px}
 
 /* ---- the menu, grouped by what it comes off --------------------------- */
 .pgroup{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:14px;background:#fff}
 .pgroup .ghead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
   padding:9px 14px;background:var(--green);color:#fff;
   font-family:var(--font-head);text-transform:uppercase;letter-spacing:.06em;font-size:14px}
-.pgroup .ghead .small{opacity:.85;font-family:var(--font-body);text-transform:none;letter-spacing:0;font-size:12.5px}
+.pgroup .ghead .small{opacity:.85;font-family:var(--font-body);text-transform:none;letter-spacing:0;font-size:13.5px}
 .pgroup .item{padding:12px 14px;border-bottom:1px solid var(--line)}
 .pgroup .item:last-child{border-bottom:0}
 .pgroup.out{opacity:.55}
@@ -419,7 +419,7 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
 .shot img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
 .shot:hover img,.shot:focus-visible img{transform:scale(1.04)}
 .shot .cap{position:absolute;left:0;right:0;bottom:0;padding:16px 11px 8px;text-align:left;
-  color:#fff;font-size:13px;line-height:1.35;
+  color:#fff;font-size:14px;line-height:1.35;
   background:linear-gradient(to top,rgba(9,18,12,.82),rgba(9,18,12,0))}
 .shot:focus-visible{outline:3px solid var(--ember-mid);outline-offset:2px}
 
@@ -452,9 +452,9 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
 .said{margin:0 0 14px;padding:13px 15px;border:1px solid var(--line);border-left:4px solid var(--green);
   border-radius:0 10px 10px 0;background:#fbfaf8}
 .said p{margin:6px 0 8px;line-height:1.55}
-.said cite{font-style:normal;font-weight:600;font-size:13.5px;color:var(--ink-soft)}
+.said cite{font-style:normal;font-weight:600;font-size:14.5px;color:var(--ink-soft)}
 .said .reply{margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);
-  font-size:13.5px;color:var(--ink-soft)}
+  font-size:14.5px;color:var(--ink-soft)}
 .trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 
 /* ---- featured strip on the shop page ------------------------------------ */
@@ -477,12 +477,12 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
   letter-spacing:.04em;text-transform:uppercase;text-decoration:none;
   padding-bottom:3px;border-bottom:2px solid rgba(247,193,74,.55)}
 .navlinks .nav-main:hover{border-bottom-color:var(--ember-hot)}
-.navlinks .nav-quiet{font-size:13px;color:#b9c7bc}
+.navlinks .nav-quiet{font-size:14px;color:#b9c7bc}
 .navlinks .nav-quiet:hover{color:#fff}
 @media (max-width:700px){
   .navlinks{gap:14px}
   .navlinks .nav-main{font-size:15px}
-  .navlinks .nav-quiet{font-size:12px}
+  .navlinks .nav-quiet{font-size:13px}
 }
 
 /* ---- picking photos to send in ------------------------------------------ */
@@ -497,8 +497,8 @@ main.wrap > .card:first-of-type{margin-top:-18px;position:relative;z-index:3}
 input[type=file]{font:inherit;font-size:14px;padding:8px 0;max-width:100%;
   /* the native control has a wide intrinsic size that scrolled narrow phones */
   box-sizing:border-box}
-@media (max-width:420px){ input[type=file]{font-size:12.5px} }
-.shot .cap .by{display:block;font-style:normal;opacity:.82;font-size:11.5px;margin-top:2px}
+@media (max-width:420px){ input[type=file]{font-size:13px} }
+.shot .cap .by{display:block;font-style:normal;opacity:.82;font-size:12.5px;margin-top:2px}
 
 /* ---- what you're buying, on the order form ------------------------------ */
 .pgroup .gbanner{position:relative;height:132px;overflow:hidden;background:#efece6}
@@ -603,7 +603,7 @@ input[type=file]{font:inherit;font-size:14px;padding:8px 0;max-width:100%;
 header.site .hero h1{font-size:clamp(30px,4.6vw,56px)}
 .hero .trust div{padding:11px 12px 10px 16px}
 .hero .trust b{font-size:20px}
-.hero .trust div:last-child{font-size:12px}
+.hero .trust div:last-child{font-size:13px}
 header.site{padding:40px 0 56px}
 @media (max-width:900px){
   .hero-bottom{grid-template-columns:1fr;gap:0}
@@ -631,9 +631,6 @@ header.site h1{letter-spacing:.02em;
      6px 6px 0 var(--ember-mid),
      9px 9px 0 rgba(6,14,9,.7),
      0 18px 36px rgba(0,0,0,.45)}
-@media (max-width:620px){
-  header.site h1{text-shadow:2px 2px 0 var(--ember-deep),4px 4px 0 var(--ember-mid),6px 6px 0 rgba(6,14,9,.6)}
-}
 
 /* trust tiles: the ember bar down the left edge that the flyer panels had */
 .trust div{position:relative;border-left:0}
@@ -900,12 +897,15 @@ footer.site{margin-top:0;clip-path:none;background:#070e09;color:#93a297}
 header.site .hero h1,header.site h1{
   letter-spacing:.075em;
   color:#e7ebe8;-webkit-text-fill-color:#e7ebe8;
-  -webkit-text-stroke:4px #d9dedb;              /* silver rim, not white */
+  /* em, not px: a 4px rim is a fifth of the glyph on a 320px phone, which
+     fills in every counter and turns the name to mush. In em it holds the
+     same proportion at 26px that it does at 62px. */
+  -webkit-text-stroke:.065em #d9dedb;             /* silver rim, not white */
   text-shadow:
-    -1px -1px 0 #ffffff,                          /* a sliver of chrome highlight top-left */
-     1px  1px 0 #8c9491,                          /* and shade bottom-right */
-     5px  5px 0 #0a0f0b, 8px 8px 0 rgba(0,0,0,.5),
-     0 18px 40px rgba(0,0,0,.6)}
+    -.016em -.016em 0 #ffffff,                    /* a sliver of chrome highlight top-left */
+     .016em  .016em 0 #8c9491,                    /* and shade bottom-right */
+     .081em  .081em 0 #0a0f0b, .129em .129em 0 rgba(0,0,0,.5),
+     0 .29em .65em rgba(0,0,0,.6)}
 header.site h1::after{
   background-image:linear-gradient(180deg,#fff2c2 0%,#ffd76a 22%,var(--ember-hot) 45%,var(--ember-mid) 72%,var(--ember-deep) 100%)}
 
@@ -916,7 +916,7 @@ header.site h1::after{
 @media (max-width:620px){
   .lockup{gap:14px}
   .lockup .mark{width:96px;height:96px}
-  header.site h1{-webkit-text-stroke:2.5px #d9dedb;letter-spacing:.055em}
+  header.site h1{letter-spacing:.055em}
   .hero-lockup{margin-bottom:14px;
     grid-template-areas:"logo name" "tag tag"}
   .hero-lockup .ribbon{justify-self:stretch;text-align:center;margin-top:2px}
@@ -943,3 +943,39 @@ header.site .hero-lockup.slim h1{-webkit-text-stroke-width:3px}
   .qty button{width:30px;height:30px;font-size:16px}
   .qty input{width:54px;height:30px}
 }
+
+
+/* ======================================================================
+   THE LOCKUP ON A PHONE
+   Side by side, the name only ever gets the room the badge leaves over:
+   measured at 17px on a 320px screen and 24px at 390px, against an 84px
+   badge -- a caption next to a logo rather than a title. Stacked, it gets
+   the whole column and roughly half again the size, which is how the
+   flyers set it anyway: mark on top, name under it, banner beneath.
+   ====================================================================== */
+@media (max-width:560px){
+  .hero,.hero-lockup{--logo:clamp(98px,27vw,132px)}
+  .hero-lockup{width:100%;margin:0 auto 14px;
+    grid-template-columns:minmax(0,1fr);
+    grid-template-areas:"logo" "name" "tag";
+    justify-items:center;gap:7px}
+  .hero-lockup .markwrap{grid-area:logo;justify-self:center;align-self:center}
+  .hero-lockup h1{grid-area:name;justify-self:center;align-self:auto;
+    text-align:center;margin-bottom:0}
+  .hero-lockup .ribbon{grid-area:tag;justify-self:center;text-align:center;margin-top:3px;
+    max-width:100%}
+  /* the tagline is far too long to hold one line on a phone -- let it wrap
+     rather than run off both edges under overflow:clip */
+  .hero-lockup .ribbon span{white-space:normal;text-wrap:balance}
+  /* the full column, less a hair for the rim that sits outside the text box */
+  header.site .hero h1{font-size:clamp(25px, calc((100cqi - 12px) / 9.9), 54px)}
+  /* the photos and estimator pages wear the same lockup, sized off .wrap */
+  header.site .hero-lockup.slim h1{font-size:clamp(22px, calc((100cqi - 12px) / 9.9), 46px)}
+  /* the pool of light was sized for a badge sitting in a corner; centred and
+     larger it only needs to clear the mark itself */
+  .markwrap::before{inset:-34%}
+  header.site{padding:26px 0 30px}
+}
+
+/* the estimator's answer band, when the sums don't work yet */
+.card.band.shy .figure{opacity:.5}
